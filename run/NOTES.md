@@ -91,21 +91,24 @@ vers le lecteur A échoue — il faut d'abord éjecter B.
 Le lanceur ne charge donc plus que le lecteur A. L'échange en cours de partie se
 fait sans obstacle : `F12` → *Floppy disks* → *Drive A:* → *Browse* → `disk2.stx`.
 
-## Plein écran
+## Affichage : fenêtre + capture souris
 
-`F11` bascule en plein écran à chaud, sans relancer.
+Choix retenu : **fenêtré**. Le plein écran monopolise l'écran et resurgit au
+mauvais moment dès qu'on travaille à côté.
 
-Le lanceur démarre désormais directement en plein écran :
+`--grab` est le réglage qui rend le jeu réellement jouable en fenêtre : sans lui,
+la raquette se bloque dès que le curseur franchit le bord de la fenêtre. Avec,
+la souris est confinée à Hatari. Pour la libérer : `F12` (ouvre le menu) ou Alt-Tab.
 
-| Option | Raison |
-|---|---|
-| `--fullscreen` | démarrage direct en plein écran |
-| `--desktop-st off` | Hatari bascule l'affichage en basse résolution et laisse l'écran l'étirer, au lieu de centrer une petite image 640×400 au milieu du bureau |
-| `--grab` | capture la souris — indispensable, la raquette suit le curseur |
+`F11` bascule plein écran / fenêtre à chaud, sans relancer.
 
-Limite de Hatari 1.8 : le zoom ST ne va pas au-delà de ×2 (640×400). En plein écran
-c'est donc le moniteur qui fait l'agrandissement final. Pour un vrai upscale filtré,
-il faudra Magpie par-dessus, ou une version récente de Hatari.
+### Limite de Hatari 1.8
+Le zoom ST plafonne à ×2, soit une fenêtre de 640×400. Impossible d'agrandir
+davantage depuis Hatari. Deux remèdes :
 
-Note : le pixel ST n'est pas carré (320×200 affiché en 4:3). Un écran 16:9 étirera
-légèrement. Sans remède simple sur Hatari 1.8 — `--aspect` ne concerne que TT/Falcon.
+- **Magpie** (open source, Windows) : agrandit la fenêtre en temps réel avec FSR,
+  Anime4K ou xBRZ. Reste fenêtré, donc sans les inconvénients du plein écran.
+- **Hatari 2.x** (SDL2) : redimensionnement libre de la fenêtre.
+
+Note : le pixel ST n'est pas carré (320×200 affiché en 4:3). Tout agrandissement
+non corrigé étirera légèrement sur un écran 16:9. `--aspect` ne concerne que TT/Falcon.
