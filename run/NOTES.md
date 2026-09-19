@@ -90,3 +90,22 @@ vers le lecteur A échoue — il faut d'abord éjecter B.
 
 Le lanceur ne charge donc plus que le lecteur A. L'échange en cours de partie se
 fait sans obstacle : `F12` → *Floppy disks* → *Drive A:* → *Browse* → `disk2.stx`.
+
+## Plein écran
+
+`F11` bascule en plein écran à chaud, sans relancer.
+
+Le lanceur démarre désormais directement en plein écran :
+
+| Option | Raison |
+|---|---|
+| `--fullscreen` | démarrage direct en plein écran |
+| `--desktop-st off` | Hatari bascule l'affichage en basse résolution et laisse l'écran l'étirer, au lieu de centrer une petite image 640×400 au milieu du bureau |
+| `--grab` | capture la souris — indispensable, la raquette suit le curseur |
+
+Limite de Hatari 1.8 : le zoom ST ne va pas au-delà de ×2 (640×400). En plein écran
+c'est donc le moniteur qui fait l'agrandissement final. Pour un vrai upscale filtré,
+il faudra Magpie par-dessus, ou une version récente de Hatari.
+
+Note : le pixel ST n'est pas carré (320×200 affiché en 4:3). Un écran 16:9 étirera
+légèrement. Sans remède simple sur Hatari 1.8 — `--aspect` ne concerne que TT/Falcon.

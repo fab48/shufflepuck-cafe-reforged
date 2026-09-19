@@ -35,5 +35,7 @@ set DISKDIR=D:\projets\shufflepuck\work\disks
   --statusbar on ^
   --sound 44100 ^
   --ym-mixing model ^
-  --window ^
+  --fullscreen ^
+  --desktop-st off ^
+  --grab ^
   %*
