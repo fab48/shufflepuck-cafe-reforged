@@ -56,3 +56,30 @@ Faire l'échange à chaud : `F12` → *Floppy disks* → *Drive A:* → *Browse*
 Le chargement est lent car `--fastfdc off` reproduit la vitesse réelle d'un lecteur
 de disquette. C'est volontaire : l'accélération FDC casse les protections. Compter
 plusieurs dizaines de secondes jusqu'à l'écran-titre.
+
+## Correction : « Fast floppy access » est actif malgré `--fastfdc off`
+
+Le menu F12 de l'instance lancée par `jouer.bat` affiche **☑ Fast floppy access**,
+alors que le lanceur passe `--fastfdc off`. Soit l'option n'est pas appliquée, soit
+le dialogue affiche la valeur du fichier de configuration plutôt que l'état courant.
+Non tranché.
+
+**Conséquence sur ce que j'avais affirmé :** j'ai présenté `--fastfdc off` comme
+*critique* pour les disques protégés. Pour ce titre, c'est faux — le jeu démarre et
+franchit sa protection avec l'accélération FDC visiblement active. La recommandation
+reste raisonnable en général, mais elle n'est pas nécessaire ici.
+
+## Confirmé à l'écran
+
+Ligne de copyright du jeu : `Copyright 1989 Broderbund Software, Inc. — V1.0`.
+Il s'agit donc de la **version 1.0**.
+
+Les deux lecteurs sont déclarés *Double Sided* alors que les disquettes sont simple
+face (BPB : 1 tête). Sans effet — un lecteur double face lit du simple face.
+
+## Images de travail
+
+`work/disks/disk1.stx` et `disk2.stx` : copies sous noms explicites, pour en finir
+avec l'inversion des noms courts 8.3 (`SHUFFL~2` = disquette 1, `SHUFFL~1` = disquette 2)
+qui est un piège à erreurs. Les originaux restent intacts dans le dossier d'archive.
+Le dossier `work/` n'est pas versionné.
