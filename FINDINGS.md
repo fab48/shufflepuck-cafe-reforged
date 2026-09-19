@@ -110,3 +110,51 @@ Les images `work/disk*.partial.st` portent le suffixe `partial` pour cette raiso
   ressources propre (187 `PICT` QuickDraw 1 bit, format documenté) là où l'ST n'a
   aucun système de fichiers. Le remaster ira sur la base Mac ; l'ST reste la version
   qu'on fait tourner à l'authentique.
+
+## Extraction de la RAM depuis un instantané Hatari
+
+Instantané pris en match contre Skip (`work/dump/skip2.sav`), gzip, 4 346 389 octets
+décompressés — il contient la RAM, la ROM TOS et les deux images disque.
+
+### Pourquoi les repères habituels échouent
+`phystop` ($42E), `_sysbase` ($4F2), les valeurs magiques ($752019, $237698AA,
+$5555AAAA) et la table des vecteurs d'exception sont **tous absents ou écrasés**.
+Le jeu prend la machine entière, TOS compris, et réutilise la mémoire basse.
+Maximum observé sur la table des vecteurs : 8 sur 62.
+
+### Ce qui marche : le code se référence lui-même
+550 instructions `JSR` en adressage absolu long (`4E B9`) donnent une cartographie
+directe :
+
+```
+cibles ST : 0x008d3e .. 0x018248   -> ~64 Ko de code
+JSR dans le fichier : 0x00cc55 .. 0x017e45
+```
+
+**Carte mémoire du jeu en cours d'exécution :**
+- code : ST 0x008000 – 0x018300 environ
+- variables / données : au-dessus de 0x018000 (ex. `$1AF1C` lu par le code)
+
+### Vérification : c'est bien du 68000
+Extrait à 0x00f009 dans la RAM extraite :
+```
+4e 55 00 00      LINK    A5,#0
+48 e7 0e 20      MOVEM.L D4-D6/A2,-(SP)
+36 39 0001af1c   MOVE.W  $0001AF1C,D3
+48 c3            EXT.L   D3
+87 fc 0005       DIVS    #5,D3
+48 43            SWAP    D3
+```
+Prologue de fonction, lecture d'une variable globale, division par 5. Code valide,
+sans ambiguïté.
+
+### ⚠️ Base non définitive
+La base retenue est 0x1ee, mais le critère utilisé (« l'opcode n'est ni 0000 ni FFFF »)
+est faible : avec 30 % de remplissage, beaucoup d'octets quelconques le passent.
+Indice contradictoire : des chaînes de configuration Hatari se trouvent à 0x62d–0xc57
+du fichier, ce qui les placerait dans la zone des variables système si la base était
+0x1ee. La vraie base est probablement juste après l'en-tête de configuration (~0xd5c).
+
+**Incertitude : quelques kilo-octets.** Sans effet sur le désassemblage — le code se
+lit correctement — mais à corriger dans Ghidra, où la cohérence des références
+absolues tranchera immédiatement.
