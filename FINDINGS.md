@@ -158,3 +158,68 @@ du fichier, ce qui les placerait dans la zone des variables système si la base 
 **Incertitude : quelques kilo-octets.** Sans effet sur le désassemblage — le code se
 lit correctement — mais à corriger dans Ghidra, où la cohérence des références
 absolues tranchera immédiatement.
+
+## Base mémoire des instantanés : 0x000F95 (résolu)
+
+### La méthode qui marche
+`--parse` avec un point d'arrêt conditionnel **sur un démarrage normal** (pas avec
+`--memstate`, qui neutralise les points d'arrêt) :
+
+```
+setup.txt    : b VBL > 2500 :once :file on_break.txt
+on_break.txt : savebin loaded.ram 0 $100000
+               cont
+```
+Chemins **relatifs obligatoires** : l'option `:file` coupe au premier `:`, donc
+`D:\...` est lu comme le fichier « D ». Lancer Hatari depuis le dossier de travail.
+
+Le dump obtenu a l'adresse ST 0 à l'offset 0 — **base vraie par construction**.
+
+### Calibrage des instantanés
+Six empreintes de 64 octets prélevées dans `loaded.ram` à des adresses ST connues,
+recherchées dans les `.sav` décompressés. **Les six donnent 0x000F95**, dans les trois
+fichiers.
+
+### Cause de tous les échecs précédents
+J'avais retenu 0x1EE — faux de 3 495 octets. Les valeurs que j'attendais étaient
+elles-mêmes erronées :
+
+| Variable | Ce que j'attendais | Valeur réelle |
+|---|---|---|
+| `_sysbase` ($4F2) | 0x00FC0000 | **0x00000940** |
+| `memvalid` ($420) | 0x00752019 | **0x752019F3** |
+| `v_bas_ad` ($44E) | — | **0x0001B700** |
+| `phystop` ($42E) | 0x00100000 | 0x00100000 ✓ |
+
+Une correspondance isolée de `phystop` sur 4,3 Mo balayés tous les 2 octets est
+**statistiquement attendue**, pas significative. J'ai conclu avant de calculer.
+
+## Carte mémoire vérifiée
+
+```
+0x008D3E – 0x018248   code        (550 JSR absolus ; 441/550 cibles sur
+                                   LINK A5 / LINK A6 / MOVEM.L = 80 %)
+0x018300 – 0x01B6FF   données
+0x0001B700            base écran
+0x000F8000            _memtop
+0x0106A2              table des noms d'adversaires ("Skip", "Biff" à +0x30)
+0x00E132              chaîne "Visiteur"
+```
+
+## Variables candidates
+
+34 adresses sont **référencées par le code ET modifiées** entre les deux impacts
+aux coins opposés (bas-gauche / haut-droite), captures fournies par l'utilisateur.
+
+| Adresse | bas-gauche | haut-droite | Ce que le code en fait |
+|---|---|---|---|
+| `$019CF6` | 6 | 206 | `CLR.W`, `CMP.W`, `SUB.W`, passé en paramètre |
+| `$018434` | 5 | −38 | `ADDQ.W #5` / `SUBQ.W #5` — déplacement par pas fixes |
+| `$01AFB4` | −563 | 3529 | lu/écrit en `MOVE.L` — 32 bits |
+| `$01AF1C` | 4 | 2 | écrit puis empilé en paramètre ; un `DIVS #5` le consomme |
+
+**`$019CF6` est le meilleur candidat pour le X du palet** : 6 → 206 balaie la largeur
+d'un espace 0-255, dans le bon sens pour un impact à gauche puis à droite.
+
+⚠️ **Candidat, pas conclusion.** À confirmer en lisant les routines complètes qui les
+manipulent, pas seulement l'instruction qui les référence.
