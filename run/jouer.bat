@@ -8,6 +8,8 @@ rem    disk1.stx = amorcage, protegee (piste 79, 70 secteurs fantomes)
 rem    disk2.stx = donnees, non protegee
 rem  Les originaux restent dans le dossier d'archive, intacts.
 rem
+rem  Le lecteur B reste VIDE : Hatari refuse la meme image dans
+rem  deux lecteurs ("cannot insert in the same drive").
 rem  Le jeu reclame la disquette 2 DANS LE LECTEUR A :
 rem    F12 -> Floppy disks -> Drive A: -> Browse -> disk2.stx
 rem ============================================================

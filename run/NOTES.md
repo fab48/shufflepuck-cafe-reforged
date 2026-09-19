@@ -57,17 +57,15 @@ Le chargement est lent car `--fastfdc off` reproduit la vitesse réelle d'un lec
 de disquette. C'est volontaire : l'accélération FDC casse les protections. Compter
 plusieurs dizaines de secondes jusqu'à l'écran-titre.
 
-## Correction : « Fast floppy access » est actif malgré `--fastfdc off`
+## À propos de « Fast floppy access »
 
-Le menu F12 de l'instance lancée par `jouer.bat` affiche **☑ Fast floppy access**,
-alors que le lanceur passe `--fastfdc off`. Soit l'option n'est pas appliquée, soit
-le dialogue affiche la valeur du fichier de configuration plutôt que l'état courant.
-Non tranché.
+J'avais écrit ici que l'option était active malgré `--fastfdc off`, et que ma
+recommandation était donc erronée. **C'était une mauvaise lecture de la capture
+d'écran.** Le fichier `~/.hatari/hatari.cfg` indique `FastFloppy = FALSE`, en
+accord avec le lanceur. L'accélération FDC est bien désactivée, comme voulu.
 
-**Conséquence sur ce que j'avais affirmé :** j'ai présenté `--fastfdc off` comme
-*critique* pour les disques protégés. Pour ce titre, c'est faux — le jeu démarre et
-franchit sa protection avec l'accélération FDC visiblement active. La recommandation
-reste raisonnable en général, mais elle n'est pas nécessaire ici.
+Leçon pour ce projet : ne pas tirer de conclusion d'une case à cocher lue sur une
+image compressée. Vérifier dans le fichier de configuration.
 
 ## Confirmé à l'écran
 
@@ -83,3 +81,12 @@ face (BPB : 1 tête). Sans effet — un lecteur double face lit du simple face.
 avec l'inversion des noms courts 8.3 (`SHUFFL~2` = disquette 1, `SHUFFL~1` = disquette 2)
 qui est un piège à erreurs. Les originaux restent intacts dans le dossier d'archive.
 Le dossier `work/` n'est pas versionné.
+
+## Ne jamais précharger la disquette 2 dans le lecteur B
+
+Hatari refuse d'insérer la même image dans deux lecteurs :
+`cannot insert in the same drive`. En préchargeant `disk2.stx` en B, l'échange
+vers le lecteur A échoue — il faut d'abord éjecter B.
+
+Le lanceur ne charge donc plus que le lecteur A. L'échange en cours de partie se
+fait sans obstacle : `F12` → *Floppy disks* → *Drive A:* → *Browse* → `disk2.stx`.
