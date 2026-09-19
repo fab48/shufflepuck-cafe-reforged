@@ -14,6 +14,9 @@ rem  Le jeu reclame la disquette 2 DANS LE LECTEUR A :
 rem    F12 -> Floppy disks -> Drive A: -> Browse -> disk2.stx
 rem ============================================================
 
+rem  Les captures Alt+G atterrissent dans le repertoire courant
+cd /d D:\projets\shufflepuck\work\captures
+
 set HATARI=D:\hatari\hatari-1.8.0_windows\hatari.exe
 set TOS=D:\hatari\TOS\tos162fr.img
 set DISKDIR=D:\projets\shufflepuck\work\disks
