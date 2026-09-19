@@ -30,7 +30,6 @@ set DISKDIR=D:\projets\shufflepuck\work\disks
   --fastfdc off ^
   --protect-floppy auto ^
   --disk-a "%DISKDIR%\disk1.stx" ^
-  --disk-b "%DISKDIR%\disk2.stx" ^
   --zoom 2 ^
   --borders off ^
   --statusbar on ^
