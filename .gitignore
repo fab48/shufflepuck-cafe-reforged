@@ -1,0 +1,9 @@
+work/
+__pycache__/
+*.pyc
+*.st
+*.stx
+*.scp
+*.hfe
+*.img
+*.rom
