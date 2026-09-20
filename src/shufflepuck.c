@@ -109,8 +109,12 @@ int sp_projeter_x(int x, int y)
     return x * SP_PROJ_ECHELLE / (y + SP_PROJ_RECUL) + SP_ECRAN_CENTRE;
 }
 
-/* $11486 — choix de l'echantillon de rebond selon la profondeur.
- * Le ST ne transpose pas : 22 echantillons distincts sont pre-enregistres.
+/* $11486 — choix de la sequence de rebond selon la profondeur.
+ *
+ * Correction : le ST transpose bel et bien. Les disquettes ne portent qu'UN
+ * echantillon de rebond, un clic de 0,09 s, et la banque .ECH le rejoue a
+ * vingt-trois hauteurs en changeant le diviseur du Timer A. Ce que cette
+ * fonction choisit est donc un numero de SEQUENCE, pas d'echantillon.
  */
 int sp_son_rebond(int y)
 {
