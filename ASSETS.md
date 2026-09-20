@@ -424,3 +424,61 @@ La suite décroissante de onze tailles, c'est **le palet mis à l'échelle
 en perspective**, pré-rendu à chaque profondeur. Quatorze tailles de
 palet, vingt-trois hauteurs de rebond : la profondeur est quantifiée
 dans l'image comme dans le son.
+
+---
+
+# Cartographie complète des deux disquettes
+
+`tools/carte_disque.py` passe chaque secteur au crible des quatre
+signatures et **vérifie** chacune par une égalité de taille. Ce qui
+reste après cela est ce qu'on ne sait pas encore lire — et c'est le seul
+chiffre qui compte.
+
+## Disquette 1
+
+| Secteurs | Octets | Contenu |
+|---|---:|---|
+| 0–135 | 69 632 | **le programme** (code 68000, tables de saut, table des volumes YM) |
+| 136–152 | 8 645 | `.PC1` — « Brøderbund Software Presents » |
+| 153–200 | 24 544 | `.PC1` — écran-titre |
+| 201–476 | 141 053 | `.ECH` — 5 échantillons, 5 séquences (la musique) |
+| 477–503 | 13 483 | `.ECH` — 5 échantillons, 28 séquences (les bruitages) |
+| 505–533 | 14 699 | `.PC1` — `jeu`, le terrain en perspective |
+| 534–606 | 36 945 | `.CPL` — `barsprit`, 57 sprites |
+| 607–629 | 11 732 | `.CPL` — `sprites`, 28 sprites (interface et palet) |
+| 632–649 | 8 792 | `.PC1` — tableau des maîtres |
+| 650–710 | 30 790 | `.PC1` — « Current Champion » |
+
+Reste : 8 325 octets, soit **2 %** — des queues de fichier entre deux
+frontières de secteur, plus 5 050 octets en fin de disquette dont la
+nature n'est pas établie.
+
+## Disquette 2
+
+| Secteurs | Octets | Contenu |
+|---|---:|---|
+| 4–64 | 30 790 | `.PC1` — « Current Champion », dupliqué |
+| 65–141 | 39 083 | `.TC0` — adversaire, 7 sprites |
+| 142–162 | 10 534 | `.TC0` — adversaire, 11 sprites |
+| 163–199 | 18 749 | `.TC0` — adversaire, 8 sprites |
+| 200–276 | 38 946 | `.TC0` — adversaire, 18 sprites |
+| 277–342 | 33 427 | `.TC0` — adversaire, 25 sprites |
+| 343–490 | 75 354 | `.TC0` — adversaire, 26 sprites |
+| 491–578 | 44 825 | `.TC0` — adversaire, 14 sprites |
+| 579–645 | 34 235 | `.TC0` — adversaire, 18 sprites |
+| 646–703 | 29 305 | `.TC0` — adversaire, 9 sprites |
+
+**96 % identifié.** Reste 13 392 octets : les queues de fichier, le
+secteur d'amorçage leurre, et 8 583 octets en fin de disquette.
+
+## Ce qui n'a pas été trouvé
+
+Le manifeste charge un fichier **`INTBAR.PC1`** — l'intérieur du bar —
+et une fonte **`quete.fnt`**. Ni l'un ni l'autre n'existe sur les deux
+disquettes : aucun en-tête `$8000` ailleurs qu'aux cinq images
+recensées, même en relâchant le test de palette aux seize couleurs STE,
+et aucune image Degas non compressée nulle part.
+
+Je le note comme un fait, pas comme un échec de recherche : le code qui
+les charge est atteignable, mais les fichiers ne sont pas là. Soit ce
+tirage ne les contient pas, soit ils sont produits autrement.
