@@ -49,16 +49,16 @@ def candidat(b, o):
 
 def main(chemin, dest=None):
     b = open(chemin, 'rb').read()
+    # Balayage aligne sur les secteurs. Une version anterieure avancait de
+    # la longueur du fichier trouve ; cette longueur etant impaire, tous
+    # les offsets suivants l'etaient aussi et la seconde banque, alignee
+    # sur un secteur, n'etait jamais testee.
     trouves = []
-    o = 0
-    while o < len(b) - 8:
+    for o in range(0, len(b) - 8, 512):
         r = candidat(b, o)
         if r:
             n1, n2, t = r
             trouves.append((o, n1, n2, t))
-            o += max(t[-1], 2)
-        else:
-            o += 2
     print(f"=== {os.path.basename(chemin)} : {len(trouves)} banque(s) .ECH ===")
     print()
     for o, n1, n2, t in trouves:

@@ -363,3 +363,64 @@ tombe juste tout seul, ce qui est la meilleure confirmation possible.
 Planches dans `work/assets/png_tc0/`. La palette employée est celle du
 terrain ; chaque adversaire a probablement la sienne, vraisemblablement
 dans la partie 0 non résolue.
+
+---
+
+# La seconde banque sonore, et ce qu'elle tranche
+
+`tools/trouver_ech.py` ne trouvait qu'une banque sur les deux annoncées
+par le binaire. La cause était un défaut du balayage, pas du format :
+après une trouvaille, il avançait de la longueur du fichier — 141 053
+octets, **impaire**. Tous les offsets suivants étaient impairs, et la
+seconde banque, alignée sur un secteur, n'était jamais testée. Les trois
+scanners balaient désormais secteur par secteur.
+
+Seconde banque : disquette 1, secteur 477, 13 483 octets, **5
+échantillons et 28 séquences**.
+
+## Le rebond du palet est transposé, pas réenregistré
+
+| Séquence | Échantillon | TADR | Fréquence |
+|---:|---:|---:|---:|
+| 0 | 1 | 84 | 7 314 Hz |
+| 1 | 1 | 108 | 5 688 Hz |
+| 2 | 0 puis 3 | 69 | 8 904 Hz |
+| 3 | 3 | 61 | 10 072 Hz |
+| **4 à 26** | **2** | **44 … 164** | **13 963 … 3 746 Hz** |
+| 27 | 4 | 48 | 12 800 Hz |
+
+Les séquences 4 à 26 jouent **toutes le même échantillon** — un clic de
+1 275 octets, 0,09 s — à vingt-trois hauteurs différentes, TADR croissant
+44, 46, 49, 52, 55, 58, 61, 65, 69, 73, 77, 81, 85, 89, 93, 98, 103,
+108, 113, 118, 124, 130, 164.
+
+Cela ferme une question restée ouverte. J'avais relevé dans le binaire
+« vingt-deux rebonds partageant leur premier octet et ne différant que
+par une valeur montant de 44 à 130 », sans savoir ce qu'était ce second
+octet. C'est le **diviseur du Timer A** : le premier octet désigne
+l'échantillon, le second la fréquence de relecture.
+
+Le ST transpose donc bel et bien — en changeant le diviseur du timer. Le
+jeu n'a pas vingt-deux sons de rebond enregistrés : il en a **un**, joué
+à vingt-trois vitesses selon la profondeur de l'impact.
+
+Et cela valide les constantes déjà établies dans `PHYSICS.md` :
+`SP_SON_REBOND_BASE = 4` et la bande choisie par `Y / 68` désignent bien
+les séquences 4 à 25 de cette banque.
+
+## `sprites.CPL` — l'interface et le palet
+
+Second `.CPL`, disquette 1 secteur 607 : 11 728 → 18 736 octets,
+**28 sprites**.
+
+    64x46   une main
+    112x31  le schéma du terrain
+    128x19  le logo « Shufflepuck »
+    32x25  32x22  32x19  32x17  32x15  32x12  32x11
+    16x9   16x7   16x6   16x4
+    puis les boutons « CANCEL » et « EXIT », les barres d'interface
+
+La suite décroissante de onze tailles, c'est **le palet mis à l'échelle
+en perspective**, pré-rendu à chaque profondeur. Quatorze tailles de
+palet, vingt-trois hauteurs de rebond : la profondeur est quantifiée
+dans l'image comme dans le son.

@@ -61,7 +61,8 @@ def depacker(b, o, limite):
 def main(chemin, dest=None):
     b = open(chemin, 'rb').read()
     trouves = []
-    for o in range(0, len(b) - 0x22, 2):
+    # Balayage aligne sur les secteurs, comme les autres formats.
+    for o in range(0, len(b) - 0x22, 512):
         if b[o] != 0x80 or b[o+1] != 0x00:
             continue
         if not palette_valide(b, o):

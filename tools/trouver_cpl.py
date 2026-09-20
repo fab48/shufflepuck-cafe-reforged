@@ -49,19 +49,16 @@ def depacker(b, o, fin, attendu):
 
 def main(chemin, dest=None):
     b = open(chemin, 'rb').read()
+    # Balayage aligne sur les secteurs : les fichiers y sont ecrits, et un
+    # balayage libre se desaligne des la premiere trouvaille.
     trouves = []
-    o = 0
-    while o < len(b) - 8:
+    for o in range(0, len(b) - 8, 512):
         comp, brut = struct.unpack_from('>HH', b, o)
         if not (8 <= comp <= len(b) - o - 4 and 256 <= brut <= 65535 and comp <= brut):
-            o += 2
             continue
         r = depacker(b, o + 4, o + 4 + comp + 2, brut)
         if r and abs(r[1] - comp) <= 1:
             trouves.append((o, comp, brut, r[0]))
-            o += comp
-        else:
-            o += 2
     print(f"=== {os.path.basename(chemin)} : {len(trouves)} fichier(s) .CPL ===")
     print()
     for o, comp, brut, _ in trouves:
