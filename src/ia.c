@@ -22,13 +22,13 @@ void sp_ia_patrouille(SpRaquette *r)
     if (nx >= r->x_max || nx + demi >= SP_LIMITE_MUR) {
         if (r->vx >= 0) { nx = r->x_max; r->vx = -r->vr_droite; }
     } else if (nx <= r->x_min || nx - demi <= -SP_LIMITE_MUR) {
-        if (r->vx <= 0) { nx = r->x_min; r->vx =  r->vr_gauche; }
+        if (r->vx <= 0) { nx = r->x_min; r->vx =  r->v_attente_x; }
     }
 
     if (ny >= SP_Y_FOND - r->y_pres) {
         if (r->vy >= 0) { ny = SP_Y_FOND - r->y_pres; r->vy = -r->vr_pres; }
     } else if (ny <= SP_Y_FOND - r->y_loin) {
-        if (r->vy <= 0) { ny = SP_Y_FOND - r->y_loin; r->vy =  r->vr_loin; }
+        if (r->vy <= 0) { ny = SP_Y_FOND - r->y_loin; r->vy =  r->v_attente_y; }
     }
     r->x = nx;
     r->y = ny;
@@ -42,8 +42,8 @@ void sp_ia_recentre(SpRaquette *r)
     int centre_x = (r->x_min + r->x_max) / 2;
     int centre_y = (r->y_pres + r->y_loin) / 2;
 
-    r->vx = (r->x > centre_x) ? -r->vr_droite : r->vr_gauche;
-    r->vy = (SP_Y_FOND - r->y > centre_y) ? r->vr_loin : -r->vr_pres;
+    r->vx = (r->x > centre_x) ? -r->vr_droite : r->v_attente_x;
+    r->vy = (SP_Y_FOND - r->y > centre_y) ? r->v_attente_y : -r->vr_pres;
     sp_ia_patrouille(r);
 }
 
@@ -83,7 +83,7 @@ int sp_ia_poursuit(SpRaquette *r, int cible_x, int cible_y,
                    int (*alea)(int min, int max),
                    int *frappe_x, int *frappe_y)
 {
-    int nx = r->x + sp_borner(-r->pas_gauche,  cible_x - r->x, r->pas_droite);
+    int nx = r->x + sp_borner(-r->pas_gauche,  cible_x - r->x, r->v_attaque);
     int ny = r->y + sp_borner(-r->pas_avant,   cible_y - r->y, r->pas_arriere);
 
     if (nx == r->x && ny == r->y) {          /* arrivee */
@@ -102,7 +102,7 @@ int sp_ia_poursuit(SpRaquette *r, int cible_x, int cible_y,
  */
 void sp_ia_frappe(SpRaquette *r, int vers_x, int vers_y)
 {
-    r->x += sp_borner(-r->pas_frappe_x, vers_x - r->x, r->pas_frappe_x);
+    r->x += sp_borner(-r->v_defense, vers_x - r->x, r->v_defense);
     r->y += sp_borner(-r->pas_frappe_y, vers_y - r->y, r->pas_frappe_y);
     r->frappe = 0;
 }
@@ -122,21 +122,21 @@ static int sp_degrader(int v, int num)
 
 void sp_lexan_boit(SpRaquette *r)
 {
-    r->cxx  = sp_degrader(r->cxx,  82);  r->cyy  = sp_degrader(r->cyy,  82);
-    r->cxp  = sp_degrader(r->cxp,  82);  r->cyp  = sp_degrader(r->cyp,  82);
-    r->cxx2 = sp_degrader(r->cxx2, 82);  r->cyy2 = sp_degrader(r->cyy2, 82);
+    r->reflex_x  = sp_degrader(r->reflex_x,  82);  r->reflex_y  = sp_degrader(r->reflex_y,  82);
+    r->accel_x  = sp_degrader(r->accel_x,  82);  r->accel_y  = sp_degrader(r->accel_y,  82);
+    r->reflex_x2 = sp_degrader(r->reflex_x2, 82);  r->reflex_y2 = sp_degrader(r->reflex_y2, 82);
 
     r->vr_droite = sp_degrader(r->vr_droite, 82);
-    r->vr_gauche = sp_degrader(r->vr_gauche, 82);
-    r->vr_loin   = sp_degrader(r->vr_loin,   82);
+    r->v_attente_x = sp_degrader(r->v_attente_x, 82);
+    r->v_attente_y   = sp_degrader(r->v_attente_y,   82);
     r->vr_pres   = sp_degrader(r->vr_pres,   82);
 
     r->pas_gauche  = sp_degrader(r->pas_gauche,  82);
-    r->pas_droite  = sp_degrader(r->pas_droite,  82);
+    r->v_attaque  = sp_degrader(r->v_attaque,  82);
     r->pas_arriere = sp_degrader(r->pas_arriere, 82);
     r->pas_avant   = sp_degrader(r->pas_avant,   82);
 
-    r->pas_frappe_x = sp_degrader(r->pas_frappe_x, 82);
+    r->v_defense = sp_degrader(r->v_defense, 82);
     r->pas_frappe_y = sp_degrader(r->pas_frappe_y, 82);
 
     r->x_min = sp_degrader(r->x_min, 107);   /* sa zone s'elargit : il titube */
