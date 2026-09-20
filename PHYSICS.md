@@ -761,3 +761,53 @@ branches sont également identiques.
   appelé depuis `0x00F252`, dans la routine qui initialise les 13 éclats — piste forte).
 - Le rôle du second paramètre (`0x80` partout, `0xA0` une fois, `0x4080` une fois).
 - Les données d'échantillons elles-mêmes, non localisées.
+
+## Format des banques — partiellement résolu
+
+En-tête commun aux trois banques :
+
+```
+mot 0 : type (5, 5, 3)
+mot 1 : NOMBRE d'echantillons  (banque 1 : 0x1C = 28)
+puis une table d'offsets 32 bits, relatifs au debut de la banque
+```
+
+Les 28 annoncés par la banque 1 concordent avec les 27 identifiés dans le code
+(0-3 divers, 4-25 rebonds, 26 frappe).
+
+Routine de lecture `$14EEC` :
+
+```
+si numero >= $1AFEA : abandonner       nombre d'echantillons charges
+pointeur = [ $1AFEE + numero*4 ]       table de pointeurs resolus
+jouer(pointeur, parametre)             via $14DD0
+```
+
+### ⚠️ Extraction des échantillons : échec
+
+Les valeurs de `$1AFEE` sortent espacées de **4 octets** (`0x0462AE`, `0x0462B2`,
+`0x0462B6`…). Ce ne sont donc pas des adresses de données audio mais des entrées d'une
+**seconde table de descripteurs**, de 4 à 6 octets chacun. Le format comporte un niveau
+d'indirection de plus que supposé, et ma tentative d'extraction directe échoue sur les
+28 échantillons.
+
+`tools/extraire_sons.py` est conservé — sa logique de validation est bonne, seule
+l'interprétation du descripteur est fausse. À reprendre après lecture de `$14DD0`.
+
+## Voie praticable : capturer la sortie
+
+Même conclusion que pour les graphismes. Les données sont empaquetées dans les deux
+cas, et le format de stockage résiste ; en revanche **la sortie est toujours en clair** :
+
+| | Stockage | Voie d'extraction |
+|---|---|---|
+| Graphismes | compressés | tampon d'affichage `$1B700`, ou `Alt+G` |
+| Audio | empaqueté, indirection non résolue | **enregistrement de Hatari** |
+
+Hatari sait enregistrer le son en WAV : raccourci `Alt+Y` (`keyRecSound = 121`), ou
+`--sound-rec <fichier>`. Une partie jouée en enregistrant donne tous les sons réels,
+sans décoder quoi que ce soit.
+
+C'est moins élégant que de lire le format, mais c'est **fiable et vérifiable**, là où
+une extraction fondée sur un format à moitié compris produirait des fichiers faux sans
+qu'on s'en aperçoive.
