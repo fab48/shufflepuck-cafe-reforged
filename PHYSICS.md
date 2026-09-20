@@ -681,3 +681,83 @@ adversaires. Les murs à ±250 sont les mêmes que pour la patrouille adverse.
 Position absolue lue en `$1A7B2` (X) et `$1A7B4` (Y), puis ramenée à un écart par
 rapport au centre de l'écran (160, 100) — le jeu recentre la souris à chaque image.
 Le matériel est servi par l'IKBD en `$FFFC00`/`$FFFC02` (fonction `0x0157E6`).
+
+---
+
+# Audio — architecture complète
+
+## Le lecteur central (`$112C0`)
+
+```
+jouer( identifiant , parametre )
+
+numero_echantillon = identifiant & 0x00FF
+banque             = identifiant & 0x0300
+
+si banque != banque_courante ($1A03E) :
+    arreter, puis charger la banque via $14EDA
+jouer_echantillon( numero, parametre )    via $14EEC
+```
+
+**Trois banques**, pointées par :
+
+| Bits 8-9 | Pointeur | Contenu |
+|---|---|---|
+| `0x000` | `$1AFD0` | banque 0 — interface |
+| `0x100` | `$1AFD4` | banque 1 — effets de jeu |
+| `0x200` | **`$1B59C`** | banque 2 — **sons de l'adversaire courant** |
+
+## Pourquoi il n'y a pas de correspondance enveloppe → personnage
+
+Le pointeur de la banque 2 (`$1B59C`) est voisin de celui de l'adversaire courant
+(`$1B5A4`) et **change avec lui**. Les vingt petites fonctions qui jouent `0x200` à
+`0x207` sont donc **génériques** : « joue le son n° 0 à 7 de l'adversaire en cours ».
+
+La correspondance que je cherchais **n'existe pas** — c'est la banque qui bascule.
+Chaque adversaire dispose de **8 emplacements** pour ses réactions.
+
+## La hauteur variable selon la distance ✅
+
+Le ST ne sait pas transposer un son à la volée. La solution retenue est matérielle :
+**22 échantillons distincts du même impact**, un par tranche de profondeur.
+
+```
+$11486 (rebond sur un mur lateral) :
+
+    echantillon = borner( Y_palet / 68 + 4 , 4 , 25 )
+    jouer( 0x100 | echantillon , 0x80 )
+```
+
+`Y` va de 0 à 1500, donc `Y / 68` découpe le terrain en 22 bandes. Plus le palet est
+loin, plus le numéro d'échantillon est élevé.
+
+Les deux branches selon le signe de `X_palet` jouent **exactement la même chose** —
+vestige d'une spatialisation gauche/droite jamais terminée.
+
+## Organisation de la banque 1
+
+| Échantillon | Rôle |
+|---|---|
+| 0 – 3 | effets divers (`$1151C`, `$11586`) |
+| **4 – 25** | **rebond sur mur, 22 profondeurs** |
+| **26** (`0x11A`) | **frappe de raquette** — hauteur fixe |
+
+La frappe ne varie pas avec la distance : `$114E4` joue toujours `0x11A`, et ses deux
+branches sont également identiques.
+
+## Correspondances établies
+
+| Identifiant | Banque | Événement |
+|---|---|---|
+| `0x104` – `0x119` | 1 | rebond mur, selon la profondeur |
+| `0x11A` | 1 | frappe de raquette |
+| `0x200` – `0x207` | 2 | réactions de l'adversaire courant |
+| `0x001` – `0x003` | 0 | interface / menu |
+| `0x100` – `0x103` | 1 | effets divers, dont probablement la vitre |
+
+## Reste à établir
+
+- Lequel des `0x100`–`0x103` est le bris de vitre (`$11586` en joue deux, et il est
+  appelé depuis `0x00F252`, dans la routine qui initialise les 13 éclats — piste forte).
+- Le rôle du second paramètre (`0x80` partout, `0xA0` une fois, `0x4080` une fois).
+- Les données d'échantillons elles-mêmes, non localisées.
