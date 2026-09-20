@@ -76,3 +76,28 @@ def degas_vers_ecran(brut, largeur=320, hauteur=200, plans=4):
                 o = y*par_ligne + w*plans*2 + p*2
                 ecran[o:o+2] = plan[w*2:w*2+2]
     return bytes(ecran)
+
+
+def write_png_rgba(path, rows, pal, transparent=0):
+    """Ecrit un PNG RGBA. L'index `transparent` devient entierement
+    transparent : sur ST, la couleur 0 sert de fond aux sprites."""
+    import zlib
+    h = len(rows); w = len(rows[0]) if h else 0
+    opaque = bytes([255])
+    vide = bytes([0])
+    raw = bytearray()
+    for r in rows:
+        raw.append(0)
+        for c in r:
+            i = c & 15
+            raw += bytes(pal[i]) + (vide if i == transparent else opaque)
+    def chunk(t, d):
+        c = t + d
+        return (struct.pack('>I', len(d)) + c
+                + struct.pack('>I', zlib.crc32(c) & 0xffffffff))
+    png = bytes([137, 80, 78, 71, 13, 10, 26, 10])
+    png += chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0))
+    png += chunk(b'IDAT', zlib.compress(bytes(raw), 9))
+    png += chunk(b'IEND', b'')
+    open(path, 'wb').write(png)
+    return w, h
