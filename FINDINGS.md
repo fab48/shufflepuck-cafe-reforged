@@ -223,3 +223,124 @@ d'un espace 0-255, dans le bon sens pour un impact à gauche puis à droite.
 
 ⚠️ **Candidat, pas conclusion.** À confirmer en lisant les routines complètes qui les
 manipulent, pas seulement l'instruction qui les référence.
+
+---
+
+## 21 septembre 2026 — l'éditeur des auteurs, et trois erreurs corrigées
+
+### Loriciel a livré le jeu avec son éditeur de réglages dedans
+
+En cherchant les chaînes du binaire, une série de libellés **en français**
+apparaît entre `0x011954` et `0x011D28` : « reflexion laterale »,
+« acceleration transversale », « debattement horizontal », « vitesse
+d'attaque », « gauche-droite min »…
+
+Ce n'est pas du texte de jeu. C'est une **table de widgets** à `0x01A118`,
+26 octets par entrée :
+
+    +$00  long   pointeur vers le libellé
+    +$08  long   variable liée (le « max » quand ce widget est un « min »)
+    +$0C  long   ADRESSE DE LA VARIABLE RÉGLÉE
+    +$10  mot    minimum          +$12  mot  maximum
+
+`tools/editeur.py` la décode. Le résultat vaut mieux que n'importe quelle
+inférence de ma part : **c'est la nomenclature des auteurs, avec leurs
+bornes.** Et elle confirme la formule de collision établie par lecture du
+code — `+$0A/+$0C` sont des coefficients de **réflexion** (bornés à 100),
+`+$0E/+$10` des coefficients d'**accélération** (bornés à 200). C'est
+exactement la structure de `dx = (dx·réflexion + vx·accélération) / 100`.
+
+Les champs `+$3A`…`+$48` sont confirmés un à un : « gauche-droite min/max »
+et « avant-arrière min/max », deux fois — dispersion du point de frappe,
+puis zone visée.
+
+Le code de cet éditeur n'est **jamais atteint** par le désassemblage
+récursif : il est mort dans la version commerciale. Ses données, elles,
+sont intactes.
+
+*Point non résolu, signalé plutôt que comblé :* trois widgets (« taille »
+deux fois, « débattement vertical ») pointent tous sur `$1AFDE` avec des
+bornes différentes. Je ne sais pas pourquoi et je ne l'invente pas.
+
+### Le pointeur de nom est en +$52, pas +$54
+
+`tools/gen_table.py` lisait un **mot** en `+$54` et rajoutait `0x010000`.
+Cela tombait juste parce que tous les noms sont en `$0106xx` — la moitié
+basse suffisait. Mais c'était faux, et c'est ce qui a fait écrire « +$54 »
+dans la documentation.
+
+Le pointeur est un **mot long en +$52**, c'est-à-dire les quatre derniers
+octets du bloc de 86. Vérifié sur les neuf blocs. Corrigé partout.
+
+Conséquence heureuse : la conclusion précédente tient. C'est bien **Nerual**
+qui porte les coefficients 97/100, ce qui colle à sa capacité documentée à
+copier la puissance du joueur — ses coefficients d'accélération (70, 130)
+sont d'ailleurs **identiques à ceux du joueur**.
+
+### Le bloc du joueur est à 0x19CF4, et fait 32 octets
+
+L'éditeur pointe sur `$19CFE`…`$19D0C` pour les huit coefficients « du
+joueur ». Base = `0x19CF4`. Or la table des adversaires commence à
+`0x19D14`, soit **exactement 32 octets plus loin** : le bloc du joueur
+n'est pas un bloc de 86 octets tronqué, c'est un bloc court, limité à la
+partie physique. Le joueur n'a pas d'IA — il n'a donc pas les champs d'IA.
+
+Une variable « poids » à `$19CF0` (valeur 5, bornes 1–10) précède le tout.
+
+### La carte mémoire était fausse : le code ne commence pas à 0x008D3E
+
+`0x008000`–`0x00B72E` est **vide dans les cinq instantanés** (au plus 8 %
+d'octets non nuls, et ces 8 % ne bougent qu'entre deux captures de partie).
+C'est un tampon, pas du programme.
+
+Cela s'est vu par un symptôme : le désassemblage récursif décodait
+**10 752 octets deux fois**. Une graine partait dans cette zone et y
+fabriquait des `ori.b #$0,d0` en rafale — c'est-à-dire des zéros. En
+n'attribuant au code que ce qui est effectivement chargé, le double
+décodage tombe à **914 octets**.
+
+Leçon : *un chiffre de couverture n'a de sens que si le dénominateur est
+juste, et un chevauchement est un signal d'erreur, pas un détail.*
+
+### Couverture : un chiffre honnête
+
+`tools/carte.py` croise le désassemblage récursif avec les cinq instantanés.
+
+| | |
+|---|---:|
+| plage analysée | 66 560 o |
+| n'a jamais rien contenu (tampons) | 14 957 o |
+| réellement chargé | 51 603 o |
+| **code atteint** | **39 314 o — 76 %** |
+| décodé deux fois | 914 o |
+| fonctions | **411** |
+
+Le gisement de graines qui a fait la différence : **ce compilateur ouvre
+chaque fonction par `link a5,#-N`**. Un `4E 55` précédé d'un `rts` est une
+fonction, pas un hasard — 194 sur 269 le sont. La recursion seule
+plafonnait à 253 fonctions ; ces prologues en ont ajouté 158.
+
+Ce qui reste non atteint est en bonne partie **des données** : les libellés
+de l'éditeur (1 006 o, 93 % ASCII), les séquences de registres YM à
+`0x014296` (motif `08 xx 09 xx 0a xx 00 00` — les registres de volume du
+YM2149), les tables d'index à `0x00BE2A`.
+
+### L'audio : deux conclusions antérieures étaient chacune à moitié vraie
+
+J'avais écrit que les sons n'étaient « pas des échantillons mais des
+paramètres YM2149 ». Puis les fichiers `.ECH` ont livré des formes d'onde
+manifestes. Les deux sont vraies, et c'est justement le mécanisme :
+
+**les échantillons existent, et ils sont joués par des écritures de
+paramètres YM.** Le STF n'ayant pas de DMA audio, chaque octet de
+l'échantillon indexe un triplet de volumes des trois voies dans une table
+de 256 entrées à `0x014296` — cette table que j'avais prise pour un banc de
+sons alors qu'elle est un **convertisseur**. Le Timer A en consomme un par
+tic.
+
+Détail des preuves dans `ASSETS.md`. Le point méthodologique : j'avais
+identifié le bon objet (des paramètres YM) et lui avais attribué le mauvais
+rôle. Reconnaître une structure ne dit pas à quoi elle sert.
+
+*Ouvert :* le binaire nomme deux banques, `ringard.ech` et `shuffle.ech` ;
+une seule a été trouvée sur les disquettes.

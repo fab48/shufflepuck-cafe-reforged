@@ -25,7 +25,7 @@ gcc -c -Wall -Wextra shufflepuck.c
 `tools/gen_table.py` produit la table des neuf adversaires directement depuis un dump
 mémoire. Aucune valeur n'est saisie à la main, donc aucune erreur de recopie possible.
 
-Elle emploie des **initialiseurs désignés** (`.cxx = 30`) plutôt qu'une initialisation
+Elle emploie des **initialiseurs désignés** (`.reflex_x = 30`) plutôt qu'une initialisation
 positionnelle. Cette dernière m'avait piégé deux fois : ajouter un champ au milieu de
 la structure décale silencieusement toutes les valeurs suivantes, sans que le
 compilateur ne signale quoi que ce soit.

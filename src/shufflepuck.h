@@ -55,31 +55,68 @@ typedef struct {
     int dx, dy;      /* vitesse                               */
 } SpPalet;
 
-/* Bloc de parametres d'une raquette. Les huit coefficients sont des
- * pourcentages ; le jeu 2 s'applique quand l'adversaire n'est pas en train
- * de frapper (drapeau +$1A non nul), et annule alors tout transfert.
+/* Bloc de parametres d'une raquette : 86 octets, image exacte de la memoire.
+ *
+ * La nomenclature vient des AUTEURS, pas de moi : Loriciel a laisse dans le
+ * binaire son editeur de reglages (table 0x01A118, voir tools/editeur.py),
+ * ou chaque champ porte son libelle francais et ses bornes. Les champs que
+ * cet editeur nomme sont marques (auteurs) ; les autres viennent de la
+ * lecture du code et restent mes noms.
+ *
+ * Les deux jeux de coefficients confirment la formule de collision : un
+ * terme de REFLEXION applique a la vitesse du palet, un terme
+ * d'ACCELERATION applique a la vitesse de la raquette. Le jeu 2 s'applique
+ * quand l'adversaire n'est pas en train de frapper (drapeau +$1A non nul).
  */
 typedef struct {
     int x, y;                /* +$00 +$02 */
     int vx, vy;              /* +$04 +$06 */
-    int largeur;             /* +$08  demi-largeur = largeur/2 */
-    int cxx, cyy, cxp, cyp;  /* +$0A..+$10  jeu 1 */
-    int cxx2, cyy2, cxp2, cyp2; /* +$12..+$18  jeu 2 */
-    int frappe;              /* +$1A  0 = frappe (transfert), 1 = passif */
+    int largeur;             /* +$08  demi-largeur = largeur/2            */
 
-    int x_min, x_max;        /* +$1E +$20  bornes de patrouille */
-    int y_pres, y_loin;      /* +$22 +$24  mesures depuis SP_Y_FOND */
-    int vr_droite, vr_gauche, vr_loin, vr_pres; /* +$26..+$2C */
-    int pas_gauche, pas_droite, pas_arriere, pas_avant; /* +$2E..+$34 */
-    int pas_frappe_x, pas_frappe_y;  /* +$36 +$38 */
-    int disp_x_min, disp_x_max;      /* +$3A +$3C  dispersion du point de frappe */
-    int disp_y_min, disp_y_max;      /* +$3E +$40 */
-    int cible_x_min, cible_x_max;    /* +$42 +$44 */
-    int cible_y_min, cible_y_max;    /* +$46 +$48 */
+    /* jeu 1 — bornes de l'editeur : reflexion 0..100, acceleration 0..200 */
+    int reflex_x;            /* +$0A  "reflexion laterale"      (auteurs) */
+    int reflex_y;            /* +$0C  "reflexion transversale"  (auteurs) */
+    int accel_x;             /* +$0E  "acceleration laterale"   (auteurs) */
+    int accel_y;             /* +$10  "acceleration transversale" (auteurs) */
+    /* jeu 2 — memes libelles, second jeu */
+    int reflex_x2;           /* +$12 */
+    int reflex_y2;           /* +$14 */
+    int accel_x2;            /* +$16 */
+    int accel_y2;            /* +$18 */
+
+    int frappe;              /* +$1A  0 = frappe (transfert), 1 = passif  */
+    int _1c;                 /* +$1C  inutilise dans tous les blocs lus   */
+
+    int x_min, x_max;        /* +$1E +$20  "debattement horizontal" 0..250 */
+    int y_pres, y_loin;      /* +$22 +$24  mesures depuis SP_Y_FOND        */
+
+    /* Vitesses d'attente. L'editeur n'expose qu'un representant par axe ;
+     * les deux autres viennent du code, qui choisit selon la direction.   */
+    int vr_droite;           /* +$26 */
+    int v_attente_x;         /* +$28  "vitesse attente horizontale" 0..100 (auteurs) */
+    int v_attente_y;         /* +$2A  "vitesse attente verticale"   0..100 (auteurs) */
+    int vr_pres;             /* +$2C */
+
+    int pas_gauche;          /* +$2E */
+    int v_attaque;           /* +$30  "vitesse d'attaque"  1..200  (auteurs) */
+    int pas_arriere;         /* +$32 */
+    int pas_avant;           /* +$34 */
+    int v_defense;           /* +$36  "vitesse de defense" 1..200  (auteurs) */
+    int pas_frappe_y;        /* +$38 */
+
+    /* Dispersion du point de frappe, puis zone visee. L'editeur nomme les
+     * quatre paires et donne leurs bornes : X dans -250..250, Y dans 0..300. */
+    int disp_x_min, disp_x_max;   /* +$3A +$3C  "gauche-droite min/max" (auteurs) */
+    int disp_y_min, disp_y_max;   /* +$3E +$40  "avant-arriere min/max" (auteurs) */
+    int cible_x_min, cible_x_max; /* +$42 +$44  "gauche-droite min/max" (auteurs) */
+    int cible_y_min, cible_y_max; /* +$46 +$48  "avant-arriere min/max" (auteurs) */
+
     int erreur_visee;        /* +$4A */
+    int _4c;                 /* +$4C */
     int seuil_reaction;      /* +$4E  reagit quand Y > SP_Y_FOND - ce champ */
-    int pas_simulation;      /* +$50  profondeur d'anticipation */
-    const char *nom;         /* +$54  pointeur de nom */
+    int pas_simulation;      /* +$50  profondeur d'anticipation             */
+    const char *nom;         /* +$52  pointeur de nom — les 4 derniers octets
+                              *       du bloc de 86, verifie sur les 9 blocs */
 } SpRaquette;
 
 int  sp_borner(int min, int v, int max);

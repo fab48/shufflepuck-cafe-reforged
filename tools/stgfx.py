@@ -53,3 +53,26 @@ def write_png(path, rows, pal):
     png += chunk(b'IEND', b'')
     open(path, 'wb').write(png)
     return w, h
+
+
+def degas_vers_ecran(brut, largeur=320, hauteur=200, plans=4):
+    """Convertit la sortie PackBits d'un Degas .PC1 en memoire ecran ST.
+
+    Piege verifie a l'image : Degas range chaque ligne PLAN PAR PLAN
+    (40 octets du plan 0, puis 40 du plan 1, ...), alors que l'ecran ST
+    ENTRELACE les plans par mots de 16 bits. Rendre la sortie PackBits
+    telle quelle donne du bruit qui ressemble a une image cassee -- il
+    faut reentrelacer.
+    """
+    mots = largeur // 16
+    par_plan = mots * 2
+    par_ligne = par_plan * plans
+    ecran = bytearray(hauteur * par_ligne)
+    for y in range(hauteur):
+        ligne = brut[y*par_ligne:(y+1)*par_ligne]
+        for p in range(plans):
+            plan = ligne[p*par_plan:(p+1)*par_plan]
+            for w in range(mots):
+                o = y*par_ligne + w*plans*2 + p*2
+                ecran[o:o+2] = plan[w*2:w*2+2]
+    return bytes(ecran)

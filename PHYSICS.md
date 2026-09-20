@@ -520,13 +520,62 @@ t      = Y * 207 / (Y + 970)
 ecranY = (193 - t)  -  X * (164 - t) / 512
 ```
 
-⚠️ **Cette formule fait dépendre l'ordonnée de l'abscisse**, ce qui incline le bord de
-la table. Aux valeurs du terrain, le bord proche s'étalerait de l'ordonnée 94 à 196 —
-une pente très marquée pour une table qui paraît symétrique à l'écran.
+**Tranché — c'était ma lecture des arguments qui était fausse.**
 
-Soit l'inclinaison est réelle et voulue, soit ma lecture de l'ordre des arguments est
-fausse pour cette fonction. **Non tranché.** À confirmer en comparant le résultat
-calculé à la position réelle du palet à l'écran.
+J'avais supposé que le premier argument de cette fonction était l'abscisse, ce qui
+faisait dépendre l'ordonnée de l'abscisse et inclinait absurdement le bord de la
+table. Le site d'appel `0x00DC58`, qui projette les quatre coins d'un rectangle,
+le dément :
+
+```
+00dc60  move.w  $a(a5), -(a7)      ; profondeur
+00dc64  move.w  $8(a5), d3
+00dc68  sub.w   $c(a5), d3         ; x - demi-largeur
+00dc6c  move.w  d3, -(a7)
+00dc6e  jsr     $db9c              ; projeter_X(x - demi, profondeur)
+
+00dc76  move.w  $a(a5), -(a7)      ; MEME profondeur
+00dc7a  move.w  $10(a5), -(a7)     ; et non $8(a5) : ce n'est pas l'abscisse
+00dc7e  jsr     $dbc2              ; projeter_Y(hauteur, profondeur)
+```
+
+Les deux projections reçoivent **la même profondeur** en second argument. Mais le
+premier argument de `projeter_Y` n'est pas `$8(a5)` — l'abscisse du rectangle — c'est
+`$10(a5)`, puis `$E(a5)` pour l'autre coin : **deux hauteurs différentes**.
+
+Le premier argument est donc une **hauteur**, pas une abscisse. La formule se lit :
+
+```
+t       = profondeur * 207 / (profondeur + 970)
+ligneSol = 193 - t                          /* l'ordonnée du sol à cette profondeur */
+ecranY   = ligneSol - hauteur * (164 - t) / 512
+```
+
+C'est une projection 2,5D ordinaire : une ligne de sol qui remonte avec la
+profondeur, et un objet soulevé au-dessus d'elle d'une hauteur dont l'échelle décroît
+avec la distance. **Aucune inclinaison.**
+
+### Ce que l'image du terrain confirme, et ce qu'elle ne confirme pas
+
+Le fichier `jeu.PC1` extrait de la disquette permet de mesurer le décor. Sur les
+lignes 62 à 118, les bords de la table donnent :
+
+- un centre à **159,5 sur chaque ligne sans exception** — le point de fuite est
+  exactement l'abscisse 160, ce qui **confirme `SP_ECRAN_CENTRE` sur l'image
+  elle-même** ;
+- une demi-largeur linéaire en ordonnée à **0,67 pixel près** en moyenne, s'annulant
+  à l'ordonnée 21.
+
+La linéarité, en revanche, ne démontre rien sur la paramétrisation en profondeur :
+des bords **droits** donnent mécaniquement une demi-largeur linéaire, quelle que soit
+la façon dont la profondeur est convertie en ordonnée. J'ai d'abord cru y voir une
+réfutation de la formule ci-dessus ; c'était une erreur de raisonnement.
+
+Reste un écart réel : la formule place l'horizon à `193 - 207 = -14`, le décor le
+place à `+21`. Trente-cinq pixels. L'explication la plus simple est que **le décor est
+peint à la main** et n'est pas produit par le moteur — auquel cas il n'a aucune raison
+d'obéir à ses constantes. Je ne sais pas trancher entre les deux et je ne l'invente
+pas.
 
 La formule de l'abscisse, elle, ne souffre aucun doute.
 
