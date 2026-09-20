@@ -354,19 +354,19 @@ d'entraÃ®nement neutre.
 
 # Service et cas particuliers (`0x010D44`)
 
-Un compteur `$19D12` décompte à chaque appel ; à zéro il est rechargé à **30** et la
+Un compteur `$19D12` dÃ©compte Ã  chaque appel ; Ã  zÃ©ro il est rechargÃ© Ã  **30** et la
 routine choisit une cible de service.
 
-## Cas général — tous sauf Bejin et Biff
+## Cas gÃ©nÃ©ral â€” tous sauf Bejin et Biff
 
 ```
 cible_X = aleatoire( $42(a6) , $44(a6) )
 cible_Y = aleatoire( $46(a6) , $48(a6) )  +  1205
 ```
 
-`$42`/`$44` et `$46`/`$48` sont donc les **bornes de la cible de service**.
+`$42`/`$44` et `$46`/`$48` sont les **bornes de la cible de service**.
 
-## Bejin (`$1B5AC == 6`) — le service télékinésique
+## Bejin (`$1B5AC == 6`) â€” le service tÃ©lÃ©kinÃ©sique
 
 ```
 $1B5B2 = aleatoire & 1
@@ -375,11 +375,11 @@ $1B598 = 6
 jsr $115DE( $1B5B4 )            <- SON choisi par ce meme tirage
 ```
 
-Deux bits tirés au hasard, et **le son joué dépend du bit qui décide de la
-direction**. C'est l'indice sonore : écouter son service permet de l'anticiper.
-Mécanique confirmée dans le code d'origine.
+Deux bits tirÃ©s au hasard, et **le son jouÃ© dÃ©pend du bit qui dÃ©cide de la
+direction**. C'est l'indice sonore : Ã©couter son service permet de l'anticiper.
+La mÃ©canique est confirmÃ©e dans le code d'origine.
 
-## Biff (`$1B5AC == 7`) — adaptation au score
+## Biff (`$1B5AC == 7`) â€” adaptation au score
 
 ```
 ecart = $1B58A - $1B588                    difference de score
@@ -389,8 +389,8 @@ cible_X = $44(a6) * pas / 20               signe aleatoire
 cible_Y = $46(a6) + ($48 - $46) * pas / 20  + 1205
 ```
 
-**Le service de Biff s'ajuste à l'écart de score.** C'est une adaptation au
-déroulement du match, pas une dégradation dans le temps.
+**Le service de Biff s'ajuste Ã  l'Ã©cart de score.** C'est une adaptation au
+dÃ©roulement du match, pas une dÃ©gradation dans le temps.
 
 ## Bornes de cible de service
 
@@ -405,3 +405,27 @@ déroulement du match, pas une dégradation dans le temps.
 | Bejin | 0 | 0 | 49 | 49 |
 | Biff | 0 | 104 | 84 | 300 |
 | Dc3 | -86 | 72 | 109 | 218 |
+
+---
+
+# RÃ©sultat nÃ©gatif vÃ©rifiÃ© : pas de fatigue par dÃ©gradation
+
+Recherche exhaustive des Ã©critures dans le bloc adverse (registre chargÃ© depuis
+`$1B5A4`) : **11 Ã©critures au total**, portant uniquement sur
+
+- `+$00` `+$02` position de la raquette
+- `+$04` `+$06` sa vitesse
+- `+$1A` le drapeau de sÃ©lection
+- `+$1C` un indicateur
+
+**Aucun code n'Ã©crit dans `+$08` Ã  `+$18`.** La largeur de raquette, les coefficients
+de collision et les vitesses sont des **constantes en lecture seule** pendant toute la
+partie.
+
+Il n'existe donc **pas** de mÃ©canique dÃ©gradant progressivement les capacitÃ©s d'un
+adversaire. L'Â« ivresse Â» de Lexan et Â« l'usure Â» de Biff, si elles se traduisent par
+autre chose qu'une animation, passent par un autre chemin â€” pour Biff, c'est
+l'adaptation au score ci-dessus.
+
+NotÃ© comme rÃ©sultat nÃ©gatif afin de ne pas implÃ©menter dans le remake une mÃ©canique
+que l'original ne contient pas.
