@@ -647,10 +647,15 @@ $19CF6 = Y_nouveau
 | Écart souris | Déplacement raquette | Rapport |
 |---|---|---|
 | 1 | 1 | ×1,0 |
-| 4 | 5 | ×1,3 |
+| 4 | 6 | ×1,5 |
 | 8 | 16 | ×2,0 |
 | 16 | 48 | ×3,0 |
 | 32 | 160 | ×5,0 |
+
+**Attention à l'ordre des opérations.** L'original calcule `|d| / 2` d'abord (décalage
+arithmétique), puis multiplie, puis divise par 4. Regrouper en `d × |d| / 8` donne un
+résultat différent en arithmétique entière — pour `d = 5`, 7 et non 8. La transcription
+en C respecte l'ordre d'origine.
 
 Les petits gestes sont au 1:1 — précision au ralenti. Les grands gestes sont amplifiés
 cinq fois — explosivité. C'est le cœur du toucher du jeu.
