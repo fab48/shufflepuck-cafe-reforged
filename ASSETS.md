@@ -256,3 +256,110 @@ exact d'un 8 bits non signé), occupent toute la plage 0–255, et présentent
 Le binaire nomme **deux** banques, `ringard.ech` et `shuffle.ech`, et une
 seule a été trouvée. La seconde est soit ailleurs sur la disquette 1 sous
 une forme que la signature ne reconnaît pas, soit absente de ce tirage.
+
+---
+
+# Les sprites : `.CPL` et `.TC0`
+
+## Le manifeste de chargement
+
+La séquence `0x00D190`–`0x00D290` charge tous les décors et dit quel
+format va avec quel fichier :
+
+| Fichier | Format | Chargeur | Contenu |
+|---|---|---|---|
+| `BRODER` | `.PC1` | `0x152D4` | les trois couronnes Brøderbund |
+| `PRESENT` | `.PC1` | `0x152D4` + `0x153AE` | l'écran « Presents » et sa palette |
+| `jeu` | `.PC1` | `0x15684` | **le terrain en perspective** |
+| `barsprit` | `.CPL` | `0x15294` | les sprites du bar |
+| `sprites` | `.CPL` | `0x15294` | les sprites |
+| `quete.fnt` | brut | `0x150A0` | la fonte |
+| `INTBAR` | `.PC1` | `0x153AE` | l'intérieur du bar et sa palette |
+
+Et ailleurs, `0x00D56E` appelle le chargeur `.TC0` avec un **nom
+dynamique** — celui que choisit la table de saut à `0x00D7DE`, qui égrène
+`skip`, `visine`, `vinnie`, `lexan`, `nerual`, `general`, `bejin`,
+`biff`, `droid`. **Les `.TC0` sont les neuf adversaires.**
+
+## `.CPL` — un RLE à convention inversée
+
+Décompresseur à `0x015116`. En-tête de deux mots (taille compressée,
+taille décompressée), puis un flux à octet de contrôle dont la convention
+est **l'inverse de PackBits** :
+
+    c <  $80 : répéter c fois l'octet suivant     (consomme 2)
+    c >= $80 : copier (c & $7F) octets littéraux  (consomme 1 + n)
+
+Sans le « +1 » de Degas. Un compteur nul existe donc et ne produit rien.
+
+## `.TC0` — codage par paires d'octets
+
+Décompresseur à `0x01554A`. Le chargeur charge le compressé **à la fin**
+du tampon de sortie et décompresse en place — une économie d'allocation
+qui ne laisse aucun tampon intermédiaire.
+
+Le fichier se découpe en blocs :
+
+    +$00  octet  N, nombre de paires (0 = bloc non compressé)
+    +$01  octet  drapeau : non nul s'il reste des blocs
+    +$02  mot    nombre d'octets du bloc, en PETIT-BOUTISTE
+    puis, si N ≠ 0 : N symboles, N premiers octets, N seconds octets
+
+Certaines valeurs d'octet sont des symboles qui se développent en deux
+autres octets, eux-mêmes développables. L'expansion est récursive mais
+déroulée sur la pile, avec deux zéros empilés comme marqueur de fond.
+Quand plusieurs paires partagent un symbole, une liste chaînée les relie
+et le code retient la dernière dont l'index est **inférieur** à l'index
+courant — c'est ce qui interdit les cycles.
+
+`tools/tc0.py` est une transcription instruction par instruction : les
+états y portent les adresses d'origine (`L15650`, `L1562C`, `L15640`,
+`L15668`). Ce n'est pas une reconstruction d'après l'idée générale, et
+c'est délibéré : une première version « comprise plutôt que transcrite »
+avait inversé la comparaison `cmp.b (a3,d2.w),d0 / bhi` et perdait 15 %
+des octets en silence, sans jamais planter.
+
+## Structure commune des banques de sprites
+
+`.CPL` et `.TC0` décompressent vers la même chose : une table de
+pointeurs en tête, puis les sprites.
+
+    +$00  long[]  offsets ; le premier donne la taille de la table
+    à chaque offset :
+    +$00  octet   largeur en mots de 16 pixels
+    +$01  octet   hauteur en lignes
+    +$02  ...     largeur x hauteur x 4 plans x 2 octets
+
+Validation : la taille déduite de l'en-tête doit égaler l'écart entre
+deux offsets consécutifs. Trois autres conventions testées (en-tête de 4
+ou 6 octets, plan de masque supplémentaire) donnent 0 sur 57 ; celle-ci
+donne **57 sur 57** — et 100 % sur les neuf banques d'adversaires.
+
+Un `.TC0` porte **deux** parties : la partie 1 est la banque de sprites,
+la partie 0 un second conteneur à deux compteurs, non résolu.
+
+## Ce qui a été extrait
+
+**`barsprit.CPL`** — disquette 1, secteur 534 : 57 sprites (visages des
+clients du bar, yeux qui clignent, enseignes « EXIT », mains).
+
+**Les neuf `.TC0`** — disquette 2, qui était inexpliquée à 91 % :
+
+| Secteur | Compressé | Décompressé | Sprites |
+|---:|---:|---:|---:|
+| 65 | 39 075 | 51 858 | 7 |
+| 142 | 10 526 | 14 648 | 11 |
+| 163 | 18 741 | 25 652 | 8 |
+| 200 | 38 938 | 53 558 | 18 |
+| 277 | 33 419 | 48 598 | 25 |
+| 343 | 75 346 | 88 936 | 26 |
+| 491 | 44 817 | 55 866 | 14 |
+| 579 | 34 227 | 48 864 | 18 |
+| 646 | 29 297 | 37 908 | 9 |
+
+**Neuf fichiers, neuf adversaires, 136 sprites d'animation.** Le compte
+tombe juste tout seul, ce qui est la meilleure confirmation possible.
+
+Planches dans `work/assets/png_tc0/`. La palette employée est celle du
+terrain ; chaque adversaire a probablement la sienne, vraisemblablement
+dans la partie 0 non résolue.
