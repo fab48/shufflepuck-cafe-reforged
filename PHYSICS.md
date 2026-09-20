@@ -856,3 +856,79 @@ Et toujours pas de chemin de réinjection identifié vers le bloc que lit l'IA.
 Le passage plus haut disant que les coefficients sont « des constantes en lecture seule
 pendant toute la partie » est **vrai pour la table `$19D14`** mais **faux en portée** :
 une copie de travail existe et elle est dégradée.
+
+
+---
+
+# L'ivresse de Lexan — résolu par l'expérience
+
+## Correction : ma question était mal posée
+
+Je cherchais comment les valeurs dégradées étaient « réinjectées » dans le bloc lu par
+l'IA. **Il n'y a pas de réinjection** : les deux structures n'en font qu'une.
+
+Mesuré sur deux instantanés d'un même match contre Lexan (score final 11-10) :
+
+```
+$1B5A4  ->  0x1B5B6      et NON 0x19E16
+```
+
+Le pointeur d'adversaire désigne une **copie de travail** recopiée au début du match.
+La table `$19D14` est un **modèle immuable** — c'est pourquoi elle reste intacte. Les
+17 adresses dégradées tombent toutes exactement sur des champs de cette copie :
+
+```
+0x1B5C0 = +$0A Cxx      0x1B5DC..0x1B5EE = +$26..+$38 toutes les vitesses
+0x1B5C2 = +$0C Cyy      0x1B5D4 = +$1E zone X min
+0x1B5C4 = +$0E Cxp      0x1B5D6 = +$20 zone X max
+0x1B5C6 = +$10 Cyp      0x1B600 = +$4A erreur de visee
+```
+
+## Mesure sur 21 points
+
+| Champ | Début | Fin | Reste |
+|---|---|---|---|
+| `+$0A` Cxx amorti X | 30 | 7 | 23 % |
+| `+$0C` Cyy amorti Y | 50 | 14 | 28 % |
+| `+$0E` Cxp transfert X | 72 | 20 | 27 % |
+| `+$10` Cyp transfert Y | 101 | 29 | 28 % |
+| `+$26`–`+$2C` rebonds | 22, 42, 43, 61 | 5, 11, 11, 18 | 22–29 % |
+| `+$2E`–`+$34` poursuite | 120, 128, 113, 106 | 35, 36, 33, 30 | 28–29 % |
+| `+$36` `+$38` frappe | 89, 88 | 25, 25 | 28 % |
+
+**Quinze champs réduits à 31 % en moyenne.** `0,82 ^ n = 0,31` donne **n ≈ 5,9** :
+six verres bus sur 21 points, cohérent avec un tirage à pile ou face par point.
+
+## Les trois champs qui augmentent
+
+| Champ | Début | Fin |
+|---|---|---|
+| `+$1E` zone X min | −136 | **−201** |
+| `+$20` zone X max | 23 | **29** |
+| `+$4A` erreur de visée | 34 | **40** |
+
+Sa **zone de patrouille s'élargit** et sa **visée se dégrade**. Il ne ralentit pas
+seulement : il titube et il rate.
+
+⚠️ Ces trois-là **ne suivent pas** le facteur 0,82 (−136 × 0,82 donnerait −111, pas
+−201). Le mécanisme qui les modifie n'est pas identifié. Noté, pas inventé.
+
+## Champs épargnés
+
+`+$08` largeur de raquette, `+$22` `+$24` bornes en profondeur, `+$4E` seuil de
+réaction, `+$50` profondeur d'anticipation : **inchangés**. Il garde sa taille, sa
+portée et son intelligence — il perd ses moyens physiques.
+
+## Courbe
+
+| Verres | Capacités restantes |
+|---|---|
+| 1 | 82 % |
+| 2 | 67 % |
+| 3 | 55 % |
+| 4 | 45 % |
+| 6 | 30 % |
+| 10 | 14 % |
+
+Comme la vitesse du palet, elle, ne baisse pas, il cesse d'arriver à temps bien avant
+d'atteindre le bas de la courbe.
