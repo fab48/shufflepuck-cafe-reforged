@@ -429,3 +429,54 @@ l'adaptation au score ci-dessus.
 
 Noté comme résultat négatif afin de ne pas implémenter dans le remake une mécanique
 que l'original ne contient pas.
+
+---
+
+# Sons
+
+## Architecture
+
+Un **lecteur unique**, `$112C0`, appelé **44 fois** dans tout le code. Signature :
+
+```
+jouer( identifiant , drapeaux )       drapeaux = 0x80 le plus souvent
+```
+
+Toutes les routines sonores y aboutissent. Il n'y a pas d'autre chemin vers le son.
+
+## Correspondances établies
+
+| Identifiant | Événement | Preuve |
+|---|---|---|
+| `0x080` | **rebond sur un mur latéral** | joué par `$11486`, appelé depuis la routine de rebond du palet (`0x0104D0`, `0x0104F8`) |
+| `0x11A` | **frappe de raquette** | joué par `$114E4`, appelé depuis le test de collision (`0x0102C2`) |
+| `0x200` / `0x201` | **les deux services de Bejin** | `$115DE` choisit l'un ou l'autre selon le bit aléatoire de direction |
+
+Les trois sont adossées à un contexte d'appel déjà identifié par ailleurs, pas à une
+supposition.
+
+## Familles d'identifiants
+
+| Plage | Nature |
+|---|---|
+| `0x001` `0x002` `0x003` | interface / menu (appelés depuis `0x11378`–`0x11422`) |
+| `0x080` | rebond mur |
+| `0x100`–`0x103` | seconde série d'effets (`$1151C`, `$11586`) |
+| `0x11A` | frappe |
+| `0x200`–`0x207` | **réactions des adversaires** |
+
+## La famille `0x2xx`
+
+Une vingtaine de petites fonctions enveloppes, de `$1160A` à `$118E8`, jouent chacune
+un ou plusieurs identifiants entre `0x200` et `0x207`. Leur régularité — deux à trois
+sons par fonction, une vingtaine de fonctions pour neuf adversaires — correspond aux
+**réactions par personnage** : victoire, défaite, raillerie.
+
+⚠️ **La correspondance enveloppe → adversaire n'est pas encore établie.** Elle demande
+de remonter aux appelants de chacune de ces fonctions. Non fait, donc non affirmé.
+
+## Ce que ça donne pour le remake
+
+Le son du rebond et celui de la frappe sont les deux effets du cœur de jeu, et ils
+sont identifiés. Le tell sonore de Bejin l'est aussi, avec ses deux identifiants —
+c'est la mécanique la plus fine du jeu et elle est reproductible telle quelle.
