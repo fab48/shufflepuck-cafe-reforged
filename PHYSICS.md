@@ -156,3 +156,112 @@ Hypothèses à confirmer :
 
 Ces trois dernières lignes sont des **corrélations**, pas des lectures de code. À
 confirmer en désassemblant les routines qui lisent ces offsets.
+
+---
+
+# Intelligence artificielle des adversaires
+
+Trois routines, toutes lues dans le code — aucune supposition.
+
+## 1. Patrouille (`0x010802`) — le comportement au repos
+
+La raquette adverse se déplace à vitesse constante et **rebondit sur les bornes de
+sa zone**, chaque borne imposant sa propre vitesse de repart :
+
+```
+suivantX = X + vX ;  suivantY = Y + vY
+
+si suivantX dépasse  $20(a6) :  X = $20(a6) ;  vX = -$26(a6)
+si suivantX descend sous $1E(a6) :  X = $1E(a6) ;  vX =  $28(a6)
+si suivantY dépasse  (1500 - $22(a6)) :  Y = ... ;  vY = -$2C(a6)
+si suivantY descend sous (1500 - $24(a6)) :  Y = ... ;  vY =  $2A(a6)
+```
+
+Le code teste aussi `$8(a6) / 2` contre les murs à ±250 : **`$8(a6)` est la largeur
+de la raquette**, et la moitié en est le demi-débattement. Champ résolu.
+
+## 2. Recentrage (`0x01096C`)
+
+Calcule le centre de la zone de patrouille et oriente la vitesse vers lui, puis
+exécute un pas de patrouille. C'est le retour à la position de repos.
+
+## 3. Anticipation (`0x010A02`) — la vraie IA
+
+```
+si dY du palet <= 0            : ne rien faire   (il s'éloigne)
+si Y du palet <= 1500 - $4E    : attendre        (seuil de réaction)
+si état du jeu != 3            : ne rien faire
+
+copier l'état du palet dans un objet de simulation :
+    $1AFBC..$1AFC2  <-  X, Y, dX, dY
+
+erreur = aléatoire dans [-$4A(a6), +$4A(a6)]
+simulation.X += erreur
+
+répéter jusqu'à $50(a6) fois :
+    avancer la simulation d'un pas de physique
+```
+
+L'adversaire **rejoue la physique réelle en avance rapide** pour savoir où le palet
+arrivera. Sa prédiction est donc exacte par construction — la difficulté ne vient
+pas d'une meilleure prédiction, mais de **l'erreur de visée**, du **seuil de
+réaction**, de la **profondeur d'anticipation** et de la **taille de sa zone**.
+
+## Paramètres d'IA (noms vérifiés via le pointeur `+$54`)
+
+| Nom | Erreur `$4A` | Pas `$50` | Réagit à Y > | Largeur `$08` |
+|---|---|---|---|---|
+| **Skip** | **±50** | 92 | 300 | 100 |
+| Vinnie | ±5 | 88 | 300 | 100 |
+| **Visine** | 0 | 92 | **1120** | 100 |
+| Lexan | ±34 | 70 | 300 | 100 |
+| Nerual | 0 | 78 | 300 | **60** |
+| Eneg | ±5 | 80 | 300 | **80** |
+| **Bejin** | 0 | 80 | 300 | **50** |
+| **Biff** | 0 | 91 | 300 | 100 |
+| Dc3 | 0 | 92 | 300 | 100 |
+
+## Zones de patrouille et vitesses de rebond
+
+| Nom | Xmin | Xmax | Ymin\* | Ymax\* | vDroite | vGauche | vLoin | vPrès |
+|---|---|---|---|---|---|---|---|---|
+| Skip | −87 | −11 | 84 | 163 | 10 | 10 | 33 | 34 |
+| Vinnie | −168 | 189 | 0 | 171 | 2 | 2 | 5 | 5 |
+| **Visine** | −136 | 144 | 40 | 251 | **122** | **116** | **141** | **149** |
+| Lexan | −136 | 23 | 58 | 171 | 22 | 42 | 43 | 61 |
+| **Nerual** | **−220** | **220** | **0** | **290** | 4 | 5 | 4 | 4 |
+| Eneg | −164 | −64 | 89 | 171 | 3 | 3 | 3 | 2 |
+| **Bejin** | **0** | **0** | **0** | **0** | 2 | 3 | 10 | 10 |
+| Biff | −77 | 81 | 124 | 274 | 10 | 10 | 10 | 10 |
+| Dc3 | −200 | 200 | 150 | 150 | 3 | 3 | 10 | 10 |
+
+\* soustraits de 1500 par le code.
+
+## Recoupements avec le jeu connu
+
+Chacun de ces points est une **prédiction du code confirmée par la description du
+jeu**, établie indépendamment :
+
+- **Bejin** : zone de patrouille **entièrement nulle** — elle ne déplace pas sa
+  raquette. Elle joue par télékinésie. Et elle a la **plus petite raquette** (50).
+- **Visine** : seuil de réaction à Y > 1120 contre 300 pour tous les autres, donc
+  elle attend le dernier moment — mais ses vitesses de rebond (122 à 149) sont dix à
+  cinquante fois celles des autres. Elle est décrite comme « très rapide ».
+- **Skip** : erreur de visée **±50**, la plus forte du jeu, et la zone de patrouille
+  la plus étroite (76 de large). Le plus facile, doublement.
+- **Nerual** : erreur nulle, **zone la plus large du jeu** (−220 à +220, toute la
+  table), et il renvoie à 97/100 % de la vitesse reçue. Il « copie la puissance des
+  tirs ».
+- **Biff** : erreur nulle, anticipation profonde (91 pas), et 184 % de transmission.
+- **Dc3** : `Ymin = Ymax = 150` — il ne bouge qu'en largeur, à profondeur fixe.
+  Comportement de partenaire d'entraînement.
+
+## Ce qui reste à établir
+
+- `$2E`…`$34`, `$36`…`$48` : rôle non lu (fonctions `0x010AB6`, `0x015294` les lisent).
+- `$4C` : non nul seulement pour Skip (10) et Lexan (5).
+- Le drapeau `+$1A` : qui le positionne.
+- La mécanique de fatigue.
+- La projection en perspective.
+- Les sons : points d'entrée `$11486` (rebond mur), `$11514`, `$114E4` identifiés
+  avec leurs appelants ; correspondance événement→son à compléter.
