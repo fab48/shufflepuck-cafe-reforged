@@ -932,3 +932,76 @@ portée et son intelligence — il perd ses moyens physiques.
 
 Comme la vitesse du palet, elle, ne baisse pas, il cesse d'arriver à temps bien avant
 d'atteindre le bas de la courbe.
+
+
+## Modèle complet et vérifié
+
+Les 17 appels n'utilisent **pas le même coefficient**. Je l'avais supposé d'après les
+quatre premiers ; c'était faux.
+
+| Champs | Coefficient | Effet |
+|---|---|---|
+| `+$0A` `+$0C` `+$0E` `+$10` (jeu 1) | **82/100** | puissance de frappe |
+| `+$12` `+$14` (jeu 2) | **82/100** | idem, second jeu |
+| `+$26`–`+$2C` rebonds | **82/100** | vitesses de patrouille |
+| `+$2E`–`+$34` poursuite | **82/100** | vitesses de poursuite |
+| `+$36` `+$38` frappe | **82/100** | vitesses de frappe |
+| `+$1E` `+$20` zone X | **107/100** | sa zone **s'élargit** |
+| `+$4A` erreur de visée | **105/100** | il vise **moins bien** |
+
+Chaque verre le rend donc **18 % plus faible, 7 % plus dispersé, 5 % moins précis**.
+Trois coefficients choisis séparément : c'est un réglage délibéré, pas un effet de bord.
+
+### Vérification exacte
+
+Modèle rejoué sur les valeurs de début, avec la troncature vers zéro de `DIVS` :
+
+```
+N = 5 verres  ->   0/19 champs reproduits
+N = 6 verres  ->  19/19 champs reproduits EXACTEMENT
+N = 7 verres  ->   0/19 champs reproduits
+```
+
+Dix-neuf champs indépendants prédits à l'entier près, et le modèle s'effondre
+totalement d'un cran de part et d'autre. Exemple sur la zone de patrouille :
+
+```
+-136 -> -145 -> -155 -> -165 -> -176 -> -188 -> -201
+```
+
+Le match ayant fini 11-10, Lexan a bu **six fois en 21 points**.
+
+### Implémentation
+
+```c
+/* Appelee apres un point, si $1B588 == 1 ou sur tirage a pile ou face.
+ * Uniquement si l'adversaire courant est Lexan ($1B5AC == 3).
+ */
+static int degrader(int v, int num) {
+    long r = (long)v * num;
+    return (int)(r >= 0 ? r / 100 : -((-r) / 100));   /* DIVS tronque vers zero */
+}
+
+void lexan_boit(SpRaquette *r) {
+    r->cxx  = degrader(r->cxx,  82);   r->cyy  = degrader(r->cyy,  82);
+    r->cxp  = degrader(r->cxp,  82);   r->cyp  = degrader(r->cyp,  82);
+    r->cxx2 = degrader(r->cxx2, 82);   r->cyy2 = degrader(r->cyy2, 82);
+    r->vr_droite = degrader(r->vr_droite, 82);
+    r->vr_gauche = degrader(r->vr_gauche, 82);
+    r->vr_loin   = degrader(r->vr_loin,   82);
+    r->vr_pres   = degrader(r->vr_pres,   82);
+    r->pas_gauche  = degrader(r->pas_gauche,  82);
+    r->pas_droite  = degrader(r->pas_droite,  82);
+    r->pas_arriere = degrader(r->pas_arriere, 82);
+    r->pas_avant   = degrader(r->pas_avant,   82);
+    r->pas_frappe_x = degrader(r->pas_frappe_x, 82);
+    r->pas_frappe_y = degrader(r->pas_frappe_y, 82);
+
+    r->x_min = degrader(r->x_min, 107);   /* la zone s'elargit */
+    r->x_max = degrader(r->x_max, 107);
+    r->erreur_visee = degrader(r->erreur_visee, 105);  /* la visee se degrade */
+}
+```
+
+Épargnés : largeur de raquette, bornes en profondeur, seuil de réaction, profondeur
+d'anticipation. Il perd ses moyens physiques, pas sa lucidité.
