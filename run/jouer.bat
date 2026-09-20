@@ -22,8 +22,10 @@ set TOS=D:\hatari\TOS\tos162fr.img
 set DISKDIR=D:\projets\shufflepuck\work\disks
 
 "%HATARI%" ^
-  --machine st ^
+  --machine ste ^
   --tos "%TOS%" ^
+  --alert-level fatal ^
+  --confirm-quit no ^
   --memsize 1 ^
   --cpuclock 8 ^
   --compatible on ^

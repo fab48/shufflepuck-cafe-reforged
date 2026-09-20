@@ -647,10 +647,15 @@ $19CF6 = Y_nouveau
 | Écart souris | Déplacement raquette | Rapport |
 |---|---|---|
 | 1 | 1 | ×1,0 |
-| 4 | 5 | ×1,3 |
+| 4 | 6 | ×1,5 |
 | 8 | 16 | ×2,0 |
 | 16 | 48 | ×3,0 |
 | 32 | 160 | ×5,0 |
+
+**Attention à l'ordre des opérations.** L'original calcule `|d| / 2` d'abord (décalage
+arithmétique), puis multiplie, puis divise par 4. Regrouper en `d × |d| / 8` donne un
+résultat différent en arithmétique entière — pour `d = 5`, 7 et non 8. La transcription
+en C respecte l'ordre d'origine.
 
 Les petits gestes sont au 1:1 — précision au ralenti. Les grands gestes sont amplifiés
 cinq fois — explosivité. C'est le cœur du toucher du jeu.
@@ -811,3 +816,253 @@ sans décoder quoi que ce soit.
 C'est moins élégant que de lire le format, mais c'est **fiable et vérifiable**, là où
 une extraction fondée sur un format à moitié compris produirait des fichiers faux sans
 qu'on s'en aperçoive.
+
+
+## Correction et extension : la dégradation touche aussi la puissance
+
+Recherche exhaustive du produit en croix `$FE9E` sur les 16 984 instructions :
+**seules deux fonctions l'emploient**, la réponse à la collision (coefficients
+variables) et `0x0110BA`. Il n'existe donc **aucune mécanique de fatigue générale**
+dans le jeu — la dégradation progressive est propre à Lexan, et c'est prouvé par
+l'absence de la primitive ailleurs.
+
+Mais `0x0110BA` fait **17 appels**, pas 10 comme annoncé précédemment. Les sept
+variables manquantes changent la portée de la mécanique :
+
+| Adresses | Valeurs en match | Champs de Lexan |
+|---|---|---|
+| `$1B5C0`–`$1B5C6` | 30, 50, 72, 101 | **Cxx, Cyy, Cxp, Cyp** — ses coefficients de collision |
+| `$1B5D4`, `$1B5D6` | −136, 23 | `+$1E`, `+$20` — ses **bornes de patrouille** |
+| `$1B5DC`–`$1B5E2` | 22, 42, 43, 61 | `+$26`–`+$2C` — vitesses de rebond |
+| `$1B5E4`–`$1B5EA` | 120, 128, 113, 106 | `+$2E`–`+$34` — vitesses de poursuite |
+| `$1B5EC`, `$1B5EE` | 89, 88 | `+$36`, `+$38` — vitesses de frappe |
+| `$1B600` | 34 | `+$4A` — erreur de visée (correspondance à confirmer) |
+
+**Lexan se dégrade sur tous les axes à la fois** : il frappe moins fort, se déplace
+moins vite, et sa zone de patrouille rétrécit. Chaque verre retire 18 % de tout.
+
+### Ce qui est prouvé, ce qui ne l'est pas
+
+**Prouvé :** 17 variables multipliées par 82/100, sous garde `$1B5AC == 3`.
+
+**Fortement étayé :** quatre valeurs consécutives correspondant dans l'ordre aux quatre
+coefficients de Lexan — une coïncidence de cet ordre est improbable.
+
+**Non prouvé :** la correspondance de `$1B600`, établie par égalité de valeur seule.
+Et toujours pas de chemin de réinjection identifié vers le bloc que lit l'IA.
+
+### Correction d'une affirmation antérieure
+
+Le passage plus haut disant que les coefficients sont « des constantes en lecture seule
+pendant toute la partie » est **vrai pour la table `$19D14`** mais **faux en portée** :
+une copie de travail existe et elle est dégradée.
+
+
+---
+
+# L'ivresse de Lexan — résolu par l'expérience
+
+## Correction : ma question était mal posée
+
+Je cherchais comment les valeurs dégradées étaient « réinjectées » dans le bloc lu par
+l'IA. **Il n'y a pas de réinjection** : les deux structures n'en font qu'une.
+
+Mesuré sur deux instantanés d'un même match contre Lexan (score final 11-10) :
+
+```
+$1B5A4  ->  0x1B5B6      et NON 0x19E16
+```
+
+Le pointeur d'adversaire désigne une **copie de travail** recopiée au début du match.
+La table `$19D14` est un **modèle immuable** — c'est pourquoi elle reste intacte. Les
+17 adresses dégradées tombent toutes exactement sur des champs de cette copie :
+
+```
+0x1B5C0 = +$0A Cxx      0x1B5DC..0x1B5EE = +$26..+$38 toutes les vitesses
+0x1B5C2 = +$0C Cyy      0x1B5D4 = +$1E zone X min
+0x1B5C4 = +$0E Cxp      0x1B5D6 = +$20 zone X max
+0x1B5C6 = +$10 Cyp      0x1B600 = +$4A erreur de visee
+```
+
+## Mesure sur 21 points
+
+| Champ | Début | Fin | Reste |
+|---|---|---|---|
+| `+$0A` Cxx amorti X | 30 | 7 | 23 % |
+| `+$0C` Cyy amorti Y | 50 | 14 | 28 % |
+| `+$0E` Cxp transfert X | 72 | 20 | 27 % |
+| `+$10` Cyp transfert Y | 101 | 29 | 28 % |
+| `+$26`–`+$2C` rebonds | 22, 42, 43, 61 | 5, 11, 11, 18 | 22–29 % |
+| `+$2E`–`+$34` poursuite | 120, 128, 113, 106 | 35, 36, 33, 30 | 28–29 % |
+| `+$36` `+$38` frappe | 89, 88 | 25, 25 | 28 % |
+
+**Quinze champs réduits à 31 % en moyenne.** `0,82 ^ n = 0,31` donne **n ≈ 5,9** :
+six verres bus sur 21 points, cohérent avec un tirage à pile ou face par point.
+
+## Les trois champs qui augmentent
+
+| Champ | Début | Fin |
+|---|---|---|
+| `+$1E` zone X min | −136 | **−201** |
+| `+$20` zone X max | 23 | **29** |
+| `+$4A` erreur de visée | 34 | **40** |
+
+Sa **zone de patrouille s'élargit** et sa **visée se dégrade**. Il ne ralentit pas
+seulement : il titube et il rate.
+
+⚠️ Ces trois-là **ne suivent pas** le facteur 0,82 (−136 × 0,82 donnerait −111, pas
+−201). Le mécanisme qui les modifie n'est pas identifié. Noté, pas inventé.
+
+## Champs épargnés
+
+`+$08` largeur de raquette, `+$22` `+$24` bornes en profondeur, `+$4E` seuil de
+réaction, `+$50` profondeur d'anticipation : **inchangés**. Il garde sa taille, sa
+portée et son intelligence — il perd ses moyens physiques.
+
+## Courbe
+
+| Verres | Capacités restantes |
+|---|---|
+| 1 | 82 % |
+| 2 | 67 % |
+| 3 | 55 % |
+| 4 | 45 % |
+| 6 | 30 % |
+| 10 | 14 % |
+
+Comme la vitesse du palet, elle, ne baisse pas, il cesse d'arriver à temps bien avant
+d'atteindre le bas de la courbe.
+
+
+## Modèle complet et vérifié
+
+Les 17 appels n'utilisent **pas le même coefficient**. Je l'avais supposé d'après les
+quatre premiers ; c'était faux.
+
+| Champs | Coefficient | Effet |
+|---|---|---|
+| `+$0A` `+$0C` `+$0E` `+$10` (jeu 1) | **82/100** | puissance de frappe |
+| `+$12` `+$14` (jeu 2) | **82/100** | idem, second jeu |
+| `+$26`–`+$2C` rebonds | **82/100** | vitesses de patrouille |
+| `+$2E`–`+$34` poursuite | **82/100** | vitesses de poursuite |
+| `+$36` `+$38` frappe | **82/100** | vitesses de frappe |
+| `+$1E` `+$20` zone X | **107/100** | sa zone **s'élargit** |
+| `+$4A` erreur de visée | **105/100** | il vise **moins bien** |
+
+Chaque verre le rend donc **18 % plus faible, 7 % plus dispersé, 5 % moins précis**.
+Trois coefficients choisis séparément : c'est un réglage délibéré, pas un effet de bord.
+
+### Vérification exacte
+
+Modèle rejoué sur les valeurs de début, avec la troncature vers zéro de `DIVS` :
+
+```
+N = 5 verres  ->   0/19 champs reproduits
+N = 6 verres  ->  19/19 champs reproduits EXACTEMENT
+N = 7 verres  ->   0/19 champs reproduits
+```
+
+Dix-neuf champs indépendants prédits à l'entier près, et le modèle s'effondre
+totalement d'un cran de part et d'autre. Exemple sur la zone de patrouille :
+
+```
+-136 -> -145 -> -155 -> -165 -> -176 -> -188 -> -201
+```
+
+Le match ayant fini 11-10, Lexan a bu **six fois en 21 points**.
+
+### Implémentation
+
+```c
+/* Appelee apres un point, si $1B588 == 1 ou sur tirage a pile ou face.
+ * Uniquement si l'adversaire courant est Lexan ($1B5AC == 3).
+ */
+static int degrader(int v, int num) {
+    long r = (long)v * num;
+    return (int)(r >= 0 ? r / 100 : -((-r) / 100));   /* DIVS tronque vers zero */
+}
+
+void lexan_boit(SpRaquette *r) {
+    r->cxx  = degrader(r->cxx,  82);   r->cyy  = degrader(r->cyy,  82);
+    r->cxp  = degrader(r->cxp,  82);   r->cyp  = degrader(r->cyp,  82);
+    r->cxx2 = degrader(r->cxx2, 82);   r->cyy2 = degrader(r->cyy2, 82);
+    r->vr_droite = degrader(r->vr_droite, 82);
+    r->vr_gauche = degrader(r->vr_gauche, 82);
+    r->vr_loin   = degrader(r->vr_loin,   82);
+    r->vr_pres   = degrader(r->vr_pres,   82);
+    r->pas_gauche  = degrader(r->pas_gauche,  82);
+    r->pas_droite  = degrader(r->pas_droite,  82);
+    r->pas_arriere = degrader(r->pas_arriere, 82);
+    r->pas_avant   = degrader(r->pas_avant,   82);
+    r->pas_frappe_x = degrader(r->pas_frappe_x, 82);
+    r->pas_frappe_y = degrader(r->pas_frappe_y, 82);
+
+    r->x_min = degrader(r->x_min, 107);   /* la zone s'elargit */
+    r->x_max = degrader(r->x_max, 107);
+    r->erreur_visee = degrader(r->erreur_visee, 105);  /* la visee se degrade */
+}
+```
+
+Épargnés : largeur de raquette, bornes en profondeur, seuil de réaction, profondeur
+d'anticipation. Il perd ses moyens physiques, pas sa lucidité.
+
+
+---
+
+# Dispersion du point de frappe (`+$3A`–`+$40`) — derniers champs résolus
+
+`$FDCE(min, max)` est un tirage uniforme dans un intervalle :
+
+```
+d3 = max - min + 1
+resultat = (aleatoire mod d3) + min
+```
+
+Dans la routine de poursuite, **dès que l'adversaire atteint la cible prédite** :
+
+```
+$1B598 = 2                              etat "arrive"
+$1AFC4 = $1AFBC                         memoriser le point d'interception
+$1AFC6 = $1AFBE
+
+$1AFBC += alea( $3A(a6), $3C(a6) )      dispersion laterale
+$1AFBE += alea( $3E(a6), $40(a6) )      dispersion en profondeur
+```
+
+Ce ne sont donc **pas** des bornes de zone mais la **dispersion du point de frappe** :
+après avoir intercepté, l'adversaire se décale d'une quantité tirée au sort. C'est le
+mécanisme qui fait varier ses angles de renvoi.
+
+| Nom | Latéral min | Latéral max | Étendue | Profondeur min | max | Étendue |
+|---|---|---|---|---|---|---|
+| Skip | -60 | 66 | 126 | 34 | 30 | -4 |
+| Vinnie | -151 | 158 | 309 | 193 | 293 | 100 |
+| Visine | -55 | 58 | 113 | 45 | 93 | 48 |
+| Lexan | -149 | 155 | 304 | 189 | 288 | 99 |
+| Nerual | 0 | 0 | 0 | 0 | 0 | 0 |
+| Eneg | -151 | 158 | 309 | 193 | 293 | 100 |
+| Bejin | -156 | 165 | 321 | 202 | 306 | 104 |
+| Biff | -152 | 159 | 311 | 194 | 294 | 100 |
+| Dc3 | -156 | 165 | 321 | 202 | 300 | 98 |
+
+## Lecture
+
+**Nerual : 0, 0, 0, 0.** Aucune dispersion — il frappe exactement au point
+d'interception qu'il a calculé. Avec son erreur de visée nulle, la zone de patrouille
+la plus large du jeu et 97/100 % de restitution de vitesse, il est **mathématiquement
+parfait**.
+
+**Visine (113) et Skip (126)** ont les dispersions les plus faibles : leurs renvois
+sont réguliers. Chez Visine cela compense sa réaction très tardive ; chez Skip cela ne
+suffit pas face à son erreur de visée de ±50 et à ses vitesses minimales.
+
+**Les six autres** se situent entre 304 et 321 : renvois très imprévisibles.
+
+## ⚠️ Anomalie chez Skip
+
+Sa dispersion en profondeur est `alea(34, 30)` — **borne haute inférieure à la borne
+basse**. Le calcul `max - min + 1` donne −3, soit une division par un nombre négatif
+dans `$FDCE`. Le résultat est imprévisible et n'était certainement pas voulu.
+
+**Probable bogue de l'original.** Un portage fidèle doit décider s'il le reproduit ou
+le corrige — le signaler plutôt que le gommer silencieusement.
