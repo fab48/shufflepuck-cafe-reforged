@@ -609,3 +609,75 @@ Le chemin par lequel ces valeurs dégradées reviennent dans le bloc que lit l'I
 pas encore identifié — celle-ci accède au bloc par le pointeur `$1B5A4`, pas à ces
 adresses absolues. Le mécanisme et les valeurs sont certains ; la réinjection ne l'est
 pas.
+
+---
+
+# Pilotage de la raquette du joueur (`0x00FB7A`)
+
+La pièce maîtresse du ressenti côté joueur, et la dernière à avoir été trouvée.
+
+## La routine
+
+```
+dx = $1A7B2 - 160            ecart de la souris au centre de l'ecran
+dy = $1A7B4 - 100
+
+dx = borner(dx, -32, +32)    ecart maximal par image
+dy = borner(dy, -32, +32)
+
+dx = dx + dx * |dx| / 8      <- courbe d'acceleration
+dy = dy + dy * |dy| / 8
+dx = borner(dx, -200, +200)
+dy = borner(dy, -200, +200)
+
+demi = $19CFC / 2                        demi-largeur de la raquette
+X_nouveau = borner(X + dx, demi-250, 250-demi)
+Y_nouveau = borner(Y - dy, 0, 300)       Y inverse
+
+$19CF8 = X_nouveau - X                   la VITESSE est le deplacement reel
+$19CFA = Y_nouveau - Y
+$19CF4 = X_nouveau
+$19CF6 = Y_nouveau
+```
+
+## La courbe d'accélération
+
+`d' = d + d × |d| / 8`
+
+| Écart souris | Déplacement raquette | Rapport |
+|---|---|---|
+| 1 | 1 | ×1,0 |
+| 4 | 5 | ×1,3 |
+| 8 | 16 | ×2,0 |
+| 16 | 48 | ×3,0 |
+| 32 | 160 | ×5,0 |
+
+Les petits gestes sont au 1:1 — précision au ralenti. Les grands gestes sont amplifiés
+cinq fois — explosivité. C'est le cœur du toucher du jeu.
+
+## Deux conséquences à ne pas manquer
+
+**La vitesse est le déplacement effectif, calculé après bornage.** Raquette plaquée
+contre un mur, le déplacement est nul, donc la vitesse est nulle — et la formule de
+collision ne transmet alors aucune puissance. Le jeu punit la frappe coincée **sans
+qu'aucune ligne ne le prévoie** : c'est émergent.
+
+**L'axe Y est inversé** : `Y - dy`. Souris vers le bas, raquette vers le joueur.
+
+## Bornes
+
+| | Min | Max |
+|---|---|---|
+| Écart souris par image | −32 | +32 |
+| Déplacement après courbe | −200 | +200 |
+| Position X | demi-largeur − 250 | 250 − demi-largeur |
+| Position Y | 0 | 300 |
+
+La demi-largeur vient de `$19CFC`, l'équivalent pour le joueur du champ `+$08` des
+adversaires. Les murs à ±250 sont les mêmes que pour la patrouille adverse.
+
+## Entrée souris
+
+Position absolue lue en `$1A7B2` (X) et `$1A7B4` (Y), puis ramenée à un écart par
+rapport au centre de l'écran (160, 100) — le jeu recentre la souris à chaque image.
+Le matériel est servi par l'IKBD en `$FFFC00`/`$FFFC02` (fonction `0x0157E6`).
