@@ -265,3 +265,87 @@ jeu**, établie indépendamment :
 - La projection en perspective.
 - Les sons : points d'entrée `$11486` (rebond mur), `$11514`, `$114E4` identifiés
   avec leurs appelants ; correspondance événement→son à compléter.
+
+---
+
+# Machine à états de l'adversaire
+
+## Le répartiteur (`0x010EAA`)
+
+```
+a6 = [$1B5A4]                    bloc de l'adversaire courant
+$1AFC8 = (a6)                    position X de sa raquette
+$1AFCA = $2(a6)                  position Y
+aiguiller sur $1B598             <- variable d'etat
+```
+
+Chaque branche appelle sa routine **et positionne le drapeau `+$1A`**, qui sélectionne
+le jeu de coefficients utilisé lors d'une collision.
+
+| État → routine | `+$1A` | Conséquence au contact |
+|---|---|---|
+| `0x10A02` anticipation | 1 | jeu 2 → **aucun transfert de puissance** |
+| `0x10AB6` poursuite | 1 | jeu 2 |
+| `0x1096C` recentrage | 1 | jeu 2 |
+| `0x10D44` (à identifier) | 1 | jeu 2 |
+| **`0x10BCE` frappe** | **0** | **jeu 1 → transfert complet** |
+| **`0x10C7C` frappe** | **0** | **jeu 1 → transfert complet** |
+
+**Mécanique centrale :** l'adversaire ne transmet sa vitesse de raquette au palet que
+s'il est **en train de frapper**. Dans tous les autres états, le contact se contente
+d'amortir. C'est la contrepartie exacte de ce que fait le joueur en accompagnant son
+geste.
+
+## Les deux états de frappe
+
+Même structure dans les deux : approche de la cible mémorisée (`$1AFC4`/`$1AFC6`) par
+pas bornés à **`±$36(a6)`** en X et **`±$38(a6)`** en Y — un bornage **symétrique**,
+distinct de celui de la poursuite. Arrivé à destination, l'état passe à 6.
+
+## Fonction utilitaire `0x00FDEC`
+
+```
+borner(min, valeur, max)   ->  min si valeur < min
+                               max si valeur > max
+                               valeur sinon
+```
+Lue dans le code, pas supposée. Utilisée par toutes les routines de déplacement.
+
+## Vitesses de déplacement, par adversaire
+
+| Nom | Poursuite X | Poursuite Y | **Frappe X** | **Frappe Y** |
+|---|---|---|---|---|
+| **Skip** | **8 / 8** | **6 / 9** | 13 | 14 |
+| Vinnie | 26 / 29 | 32 / 26 | **3** | **5** |
+| Visine | 74 / 77 | 37 / 48 | 139 | 145 |
+| **Lexan** | **120 / 128** | **106 / 113** | 89 | 88 |
+| **Nerual** | 58 / 53 | 61 / 82 | **161** | **238** |
+| Eneg | 123 / 65 | 77 / 71 | 13 | 14 |
+| Bejin | 69 / 72 | 83 / 83 | 13 | 14 |
+| **Biff** | 66 / 64 | 64 / 63 | 13 | 14 |
+| Dc3 | 17 / 17 | 17 / 17 | 14 | 14 |
+
+- **`$2E` / `$30`** : pas max vers la gauche / la droite pendant la poursuite
+- **`$34` / `$32`** : pas max vers l'avant / l'arrière pendant la poursuite
+- **`$36` / `$38`** : pas max pendant la frappe (symétrique)
+
+## Lecture
+
+**Skip** est lent sur trois plans à la fois : poursuite à 8 (le minimum), erreur de
+visée ±50 (le maximum), et la zone de patrouille la plus étroite du jeu.
+
+**Lexan** a la poursuite la plus rapide (120/128) — cohérent avec un adversaire qui
+perd ses réflexes en s'enivrant : il *part* très rapide.
+
+**Nerual** frappe le plus vite du jeu (161/238), sans erreur de visée, depuis la zone
+la plus large, et renvoie à 97/100 % de la vitesse reçue.
+
+**Biff** est modeste partout — poursuite 66/64, frappe 13/14. Sa difficulté ne vient
+**pas** de sa vitesse mais de ses **184 % de transfert de puissance**. Il ne court pas
+après le palet : il cogne. Cohérent avec le personnage, un biker massif.
+
+**Vinnie** a la frappe la plus lente du jeu (3/5) : il ne bouge presque plus au moment
+de toucher.
+
+**Dc3** est uniforme partout (17 en poursuite, 14 en frappe) — le partenaire
+d'entraînement neutre.
