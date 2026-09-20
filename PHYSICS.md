@@ -84,57 +84,75 @@ Adversaire courant : pointé par `$1B5A4`.
 
 ## Table des neuf adversaires
 
-Base `$19D14`, pas de **86 octets**. L'ordre suit la numérotation du café.
+Base `$19D14`, pas de **86 octets**.
 
-| # | Nom | Cxx | Cyy | Cxp | Cyp | Jeu 2 (Cxp2/Cyp2) |
-|---|---|---|---|---|---|---|
-| 0 | **Skip** | 17 | 20 | 28 | 34 | 0 / 0 |
-| 1 | **Visine** | 20 | 30 | 41 | 80 | 0 / 0 |
-| 2 | **Vinnie** | 25 | 40 | 28 | 23 | 0 / 0 |
-| 3 | **Lexan** | 30 | 50 | 72 | 101 | 0 / 0 |
-| 4 | **Eneg** | **97** | **100** | 70 | 130 | 0 / 0 |
-| 5 | **Nerual** | 15 | 30 | 100 | 100 | 0 / 0 |
-| 6 | **Bejin** | 10 | 37 | 49 | 102 | 0 / 0 |
-| 7 | **Biff** | 13 | 40 | 72 | **184** | 0 / 0 |
-| 8 | **DC3** | 15 | 16 | 15 | 16 | 0 / 0 |
-| — | *Joueur* | 50 | 50 | 70 | 130 | 70 / 140 |
+### ⚠️ L'ordre des blocs n'est PAS celui du café
+
+Correction d'une erreur : j'avais supposé que l'ordre des blocs suivait la
+numérotation des zones cliquables du café. **C'est faux.** Chaque bloc contient en
+`+$54` le mot bas d'un **pointeur vers son nom** (base `0x010000`), ce qui permet de
+lire l'identité au lieu de la supposer.
+
+| Bloc | Ce que j'avais supposé | Nom réellement pointé |
+|---|---|---|
+| 1 | ~~Visine~~ | **Vinnie** |
+| 2 | ~~Vinnie~~ | **Visine** |
+| 4 | ~~Eneg~~ | **Nerual** |
+| 5 | ~~Nerual~~ | **Eneg** |
+
+### Table vérifiée
+
+| # | Nom | Adresse | Cxx | Cyy | Cxp | Cyp | `+$08` |
+|---|---|---|---|---|---|---|---|
+| 0 | **Skip** | `$19D14` | 17 | 20 | 28 | 34 | 100 |
+| 1 | **Vinnie** | `$19D6A` | 20 | 30 | 41 | 80 | 100 |
+| 2 | **Visine** | `$19DC0` | 25 | 40 | 28 | 23 | 100 |
+| 3 | **Lexan** | `$19E16` | 30 | 50 | 72 | 101 | 100 |
+| 4 | **Nerual** | `$19E6C` | **97** | **100** | 70 | 130 | 60 |
+| 5 | **Eneg** | `$19EC2` | 15 | 30 | 100 | 100 | 80 |
+| 6 | **Bejin** | `$19F18` | 10 | 37 | 49 | 102 | 50 |
+| 7 | **Biff** | `$19F6E` | 13 | 40 | 72 | **184** | 100 |
+| 8 | **Dc3** | `$19FC4` | 15 | 16 | 15 | 16 | 100 |
+| — | *Joueur* | `$19CF4` | 50 | 50 | 70 | 130 | 100 |
 
 ### Lecture
 
-**Deux stratégies de difficulté, pas une.**
+**Nerual** conserve **97 % et 100 %** de la vitesse du palet : il le renvoie
+pratiquement à la vitesse où il l'a reçu. C'est exactement la description qu'en donne
+la documentation du jeu — *« capable de copier la puissance des tirs du joueur »*.
+La correction de l'ordre des blocs fait coïncider les chiffres avec le personnage.
 
-- **Eneg** conserve 97 % et 100 % de la vitesse du palet : l'échange ne ralentit
-  jamais, le palet revient aussi vite qu'il est parti.
-- **Biff** transmet **184 %** de sa vitesse de raquette — le maximum du jeu. Il
-  frappe à près du double de son propre mouvement.
+**Biff** transmet **184 %** de sa vitesse de raquette, le maximum du jeu.
 
-Ce sont précisément les deux adversaires que l'utilisateur, joueur de longue date,
-a désignés comme les plus durs — sans avoir vu le code.
+**Eneg** amortit fortement l'entrant (15/30) mais transmet intégralement son geste
+(100/100) : un profil de frappeur, pas de renvoyeur.
 
-**Skip** (17/20/28/34) amortit tout et ne transmet presque rien : le plus facile.
-**DC3** est parfaitement symétrique (15/16/15/16), cohérent avec son rôle de
-partenaire d'entraînement réglable.
+**Skip** amortit tout et ne transmet presque rien. **Dc3** est parfaitement symétrique
+(15/16/15/16), cohérent avec son rôle de partenaire d'entraînement réglable.
 
-Le second jeu de coefficients annule la transmission de la raquette pour **tous**
-les adversaires (Cxp2 = Cyp2 = 0) alors que le joueur y conserve 70/140. Il
-correspond vraisemblablement à un contact passif, sans geste.
+## Autres champs du bloc (86 octets)
 
-## Vérification
+34 offsets varient d'un adversaire à l'autre. Identifiés avec certitude :
 
-Deux captures mémoire prises au moment d'un point perdu, aux coins opposés :
+| Offset | Contenu |
+|---|---|
+| `+$0A` `+$0C` `+$0E` `+$10` | Cxx, Cyy, Cxp, Cyp |
+| `+$12` `+$14` `+$16` `+$18` | second jeu de coefficients |
+| `+$1A` | drapeau de sélection (état d'exécution) |
+| `+$54` | pointeur vers le nom (mot bas, base `0x010000`) — **vérifié** |
 
-| | X | Y | dX | dY |
-|---|---|---|---|---|
-| impact **bas-gauche** | **−207** | **−18** | −18 | −208 |
-| impact **haut-droite** | **+212** | **+1500** | +5 | +229 |
+Hypothèses à confirmer :
 
-X à −207 puis +212 : les deux juste en deçà des murs à ±226, là où se produit un
-impact de coin. Y à −18 (derrière la ligne du joueur) puis +1500 (derrière la ligne
-adverse). Les quatre valeurs sont cohérentes avec la description faite par
-l'utilisateur avant toute analyse.
+- **`+$08`** vaut 100 partout sauf Nerual (60), Eneg (80), Bejin (50). Ce n'est **pas**
+  le dénominateur des pourcentages — celui-ci est le global `$19CE8`, lu dans le code.
+  Rôle inconnu.
+- **`+$1E`…`+$24`** : quatre valeurs par adversaire, nulles pour **Bejin**. Cohérent
+  avec un personnage qui ne déplace pas sa raquette (télékinésie) — donc probablement
+  des **bornes de déplacement**.
+- **`+$26`…`+$34`** : **Visine** y porte les valeurs les plus élevées du jeu
+  (122, 116, 141, 149). Sa description la dit « très rapide ». Probablement des
+  **vitesses de déplacement**.
+- **`+$4E`** vaut 1200 pour tous sauf **Visine** (380).
 
-## Outils
-
-- `tools/sweep.py` — balayage 68000 résilient (capstone M68K, 96 % de couverture)
-- `tools/disasm.py` — fonctions, plages, références croisées
-- `work/dump/loaded.ram` — RAM à base connue, via point d'arrêt + `savebin`
+Ces trois dernières lignes sont des **corrélations**, pas des lectures de code. À
+confirmer en désassemblant les routines qui lisent ces offsets.
