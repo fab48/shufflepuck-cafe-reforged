@@ -816,3 +816,43 @@ sans décoder quoi que ce soit.
 C'est moins élégant que de lire le format, mais c'est **fiable et vérifiable**, là où
 une extraction fondée sur un format à moitié compris produirait des fichiers faux sans
 qu'on s'en aperçoive.
+
+
+## Correction et extension : la dégradation touche aussi la puissance
+
+Recherche exhaustive du produit en croix `$FE9E` sur les 16 984 instructions :
+**seules deux fonctions l'emploient**, la réponse à la collision (coefficients
+variables) et `0x0110BA`. Il n'existe donc **aucune mécanique de fatigue générale**
+dans le jeu — la dégradation progressive est propre à Lexan, et c'est prouvé par
+l'absence de la primitive ailleurs.
+
+Mais `0x0110BA` fait **17 appels**, pas 10 comme annoncé précédemment. Les sept
+variables manquantes changent la portée de la mécanique :
+
+| Adresses | Valeurs en match | Champs de Lexan |
+|---|---|---|
+| `$1B5C0`–`$1B5C6` | 30, 50, 72, 101 | **Cxx, Cyy, Cxp, Cyp** — ses coefficients de collision |
+| `$1B5D4`, `$1B5D6` | −136, 23 | `+$1E`, `+$20` — ses **bornes de patrouille** |
+| `$1B5DC`–`$1B5E2` | 22, 42, 43, 61 | `+$26`–`+$2C` — vitesses de rebond |
+| `$1B5E4`–`$1B5EA` | 120, 128, 113, 106 | `+$2E`–`+$34` — vitesses de poursuite |
+| `$1B5EC`, `$1B5EE` | 89, 88 | `+$36`, `+$38` — vitesses de frappe |
+| `$1B600` | 34 | `+$4A` — erreur de visée (correspondance à confirmer) |
+
+**Lexan se dégrade sur tous les axes à la fois** : il frappe moins fort, se déplace
+moins vite, et sa zone de patrouille rétrécit. Chaque verre retire 18 % de tout.
+
+### Ce qui est prouvé, ce qui ne l'est pas
+
+**Prouvé :** 17 variables multipliées par 82/100, sous garde `$1B5AC == 3`.
+
+**Fortement étayé :** quatre valeurs consécutives correspondant dans l'ordre aux quatre
+coefficients de Lexan — une coïncidence de cet ordre est improbable.
+
+**Non prouvé :** la correspondance de `$1B600`, établie par égalité de valeur seule.
+Et toujours pas de chemin de réinjection identifié vers le bloc que lit l'IA.
+
+### Correction d'une affirmation antérieure
+
+Le passage plus haut disant que les coefficients sont « des constantes en lecture seule
+pendant toute la partie » est **vrai pour la table `$19D14`** mais **faux en portée** :
+une copie de travail existe et elle est dégradée.
