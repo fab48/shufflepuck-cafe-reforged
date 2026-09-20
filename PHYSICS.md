@@ -1066,3 +1066,63 @@ dans `$FDCE`. Le résultat est imprévisible et n'était certainement pas voulu.
 
 **Probable bogue de l'original.** Un portage fidèle doit décider s'il le reproduit ou
 le corrige — le signaler plutôt que le gommer silencieusement.
+
+
+---
+
+# Audio — correction majeure : ce ne sont pas des échantillons
+
+## Ce que j'avais écrit, et qui est faux
+
+> « Le ST ne sait pas transposer un son à la volée. La solution retenue est
+> matérielle : 22 échantillons distincts du même impact. »
+
+**Les deux affirmations sont fausses.** J'avais déduit le format sans jamais regarder
+les octets.
+
+## Le format réel
+
+La banque 1 entière fait **112 octets pour 28 sons** — impossible pour du PCM. Chaque
+descripteur est une courte **séquence de paires `(commande, valeur)` terminée par
+`$FF`** :
+
+```
+#0  01 54 ff        une paire
+#2  00 45 03 45 ff  deux paires
+#4  02 2c ff
+```
+
+Ce sont des **paramètres pour le YM2149**, le générateur de sons de l'Atari ST. Le
+moteur audio est un petit interpréteur de séquences, pas un lecteur d'échantillons.
+
+## Les 22 rebonds sont un seul son transposé
+
+| Échantillon | Profondeur | Descripteur | Valeur |
+|---|---|---|---|
+| 4 | 0 | `02 2c` | 44 |
+| 5 | 1 | `02 2e` | 46 |
+| … | … | … | … |
+| 25 | 21 | `02 82` | 130 |
+
+Premier octet identique sur les 22, second strictement croissant de 44 à 130. C'est
+**une seule sonorité jouée à 22 hauteurs différentes**.
+
+Sur le YM2149 le registre de ton est une **période**, donc une valeur plus grande
+produit un son **plus grave**. Plus le palet est loin, plus l'impact est sourd —
+exactement l'effet décrit par le joueur.
+
+*(Le rôle précis du premier octet — registre, forme d'onde ou instrument — reste une
+interprétation, non une lecture du code du moteur audio.)*
+
+## La frappe de raquette
+
+Échantillon 26 : `02 a4`, soit une valeur de 164 — plus grave que n'importe quel
+rebond. Même sonorité de base, hauteur fixe.
+
+## Conséquence pour le remake
+
+Il n'y a **aucun échantillon à extraire** pour les effets de jeu. Il faut reproduire
+une sonorité YM2149 et la jouer aux 22 hauteurs tabulées ci-dessus — ou synthétiser
+l'équivalent.
+
+La musique de titre numérisée, elle, relève d'un autre mécanisme, non étudié.

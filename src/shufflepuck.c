@@ -121,43 +121,130 @@ int sp_son_rebond(int y)
 }
 
 /* ---- Donnees extraites de la table $19D14 (pas de 86 octets) -------------
- * Ordre etabli par le pointeur de nom en +$54, et non par l'ordre du cafe.
+ * Ordre etabli par le pointeur de nom en +$54, et NON par l'ordre du cafe.
+ *
+ * Ce bloc est GENERE automatiquement depuis le dump memoire du jeu par
+ * tools/gen_table.py : aucune valeur n'est recopiee a la main.
+ *
+ * Initialiseurs designes : chaque valeur porte le nom de son champ, ce qui
+ * rend la table immune a tout changement d'ordre dans la structure.
  */
-#define RAQ(nom_, l, a,b,c,d, xmin,xmax,ypres,yloin, \
-            vrd,vrg,vrl,vrp, pg,pd,par,pav, pfx,pfy, \
-            cxmin,cxmax,cymin,cymax, err, seuil, pas)                         \
-    { 0,0,0,0, l, a,b,c,d, a,b,0,0, 0,                                        \
-      xmin,xmax,ypres,yloin, vrd,vrg,vrl,vrp, pg,pd,par,pav, pfx,pfy,         \
-      cxmin,cxmax,cymin,cymax, err, seuil, pas, nom_ }
-
 const SpRaquette sp_adversaires[9] = {
- RAQ("Skip",  100, 17, 20, 28, 34,  -87,-11, 84,163,  10,10,33,34,
-     8,8,9,6,      13,14,   -18, 15, 88,120,  50, 1200, 92),
- RAQ("Vinnie",100, 20, 30, 41, 80, -168,189,  0,171,   2, 2, 5, 5,
-     26,29,26,32,   3, 5,   -50, 11, 84,127,   5, 1200, 88),
- RAQ("Visine",100, 25, 40, 28, 23, -136,144, 40,251, 122,116,141,149,
-     74,77,48,37, 139,145,  -230,  1, 26, 59,   0,  380, 92),
- RAQ("Lexan", 100, 30, 50, 72,101, -136, 23, 58,171,  22,42,43,61,
-     120,128,113,106, 89,88,  -86, -5,103,206,  34, 1200, 70),
- RAQ("Nerual", 60, 97,100, 70,130, -220,220,  0,290,   4, 5, 4, 4,
-     58,53,61,82,  161,238,  -11, 13, 22, 55,   0, 1200, 78),
- RAQ("Eneg",   80, 15, 30,100,100, -164,-64, 89,171,   3, 3, 3, 2,
-     123,65,77,71, 13,14,    -87, 67,136,231,   5, 1200, 80),
- RAQ("Bejin",  50, 10, 37, 49,102,    0,  0,  0,  0,   2, 3,10,10,
-     69,72,83,83,  13,14,      0,  0, 49, 49,   0, 1200, 80),
- RAQ("Biff",  100, 13, 40, 72,184,  -77, 81,124,274,  10,10,10,10,
-     66,64,64,63,  13,14,      0,104, 84,300,   0, 1200, 91),
- RAQ("Dc3",   100, 15, 16, 15, 16, -200,200,150,150,   3, 3,10,10,
-     17,17,17,17,  14,14,    -86, 72,109,218,   0, 1200, 92),
+  { /* 0 — Skip */
+    .nom = "Skip",
+    .largeur = 100, .cxx = 17, .cyy = 20, .cxp = 28, .cyp = 34, .cxx2 = 17,
+    .cyy2 = 20, .cxp2 = 0, .cyp2 = 0, .x_min = -87, .x_max = -11,
+    .y_pres = 84, .y_loin = 163, .vr_droite = 10, .vr_gauche = 10,
+    .vr_loin = 33, .vr_pres = 34, .pas_gauche = 8, .pas_droite = 8,
+    .pas_arriere = 9, .pas_avant = 6, .pas_frappe_x = 13,
+    .pas_frappe_y = 14, .disp_x_min = -60, .disp_x_max = 66,
+    .disp_y_min = 34, .disp_y_max = 30, .cible_x_min = -18,
+    .cible_x_max = 15, .cible_y_min = 88, .cible_y_max = 120,
+    .erreur_visee = 50, .seuil_reaction = 1200, .pas_simulation = 92,
+  },
+  { /* 1 — Vinnie */
+    .nom = "Vinnie",
+    .largeur = 100, .cxx = 20, .cyy = 30, .cxp = 41, .cyp = 80, .cxx2 = 20,
+    .cyy2 = 30, .cxp2 = 0, .cyp2 = 0, .x_min = -168, .x_max = 189,
+    .y_pres = 0, .y_loin = 171, .vr_droite = 2, .vr_gauche = 2,
+    .vr_loin = 5, .vr_pres = 5, .pas_gauche = 26, .pas_droite = 29,
+    .pas_arriere = 26, .pas_avant = 32, .pas_frappe_x = 3,
+    .pas_frappe_y = 5, .disp_x_min = -151, .disp_x_max = 158,
+    .disp_y_min = 193, .disp_y_max = 293, .cible_x_min = -50,
+    .cible_x_max = 11, .cible_y_min = 84, .cible_y_max = 127,
+    .erreur_visee = 5, .seuil_reaction = 1200, .pas_simulation = 88,
+  },
+  { /* 2 — Visine */
+    .nom = "Visine",
+    .largeur = 100, .cxx = 25, .cyy = 40, .cxp = 28, .cyp = 23, .cxx2 = 25,
+    .cyy2 = 40, .cxp2 = 0, .cyp2 = 0, .x_min = -136, .x_max = 144,
+    .y_pres = 40, .y_loin = 251, .vr_droite = 122, .vr_gauche = 116,
+    .vr_loin = 141, .vr_pres = 149, .pas_gauche = 74, .pas_droite = 77,
+    .pas_arriere = 48, .pas_avant = 37, .pas_frappe_x = 139,
+    .pas_frappe_y = 145, .disp_x_min = -55, .disp_x_max = 58,
+    .disp_y_min = 45, .disp_y_max = 93, .cible_x_min = -230,
+    .cible_x_max = 1, .cible_y_min = 26, .cible_y_max = 59,
+    .erreur_visee = 0, .seuil_reaction = 380, .pas_simulation = 92,
+  },
+  { /* 3 — Lexan */
+    .nom = "Lexan",
+    .largeur = 100, .cxx = 30, .cyy = 50, .cxp = 72, .cyp = 101, .cxx2 = 30,
+    .cyy2 = 50, .cxp2 = 0, .cyp2 = 0, .x_min = -136, .x_max = 23,
+    .y_pres = 58, .y_loin = 171, .vr_droite = 22, .vr_gauche = 42,
+    .vr_loin = 43, .vr_pres = 61, .pas_gauche = 120, .pas_droite = 128,
+    .pas_arriere = 113, .pas_avant = 106, .pas_frappe_x = 89,
+    .pas_frappe_y = 88, .disp_x_min = -149, .disp_x_max = 155,
+    .disp_y_min = 189, .disp_y_max = 288, .cible_x_min = -86,
+    .cible_x_max = -5, .cible_y_min = 103, .cible_y_max = 206,
+    .erreur_visee = 34, .seuil_reaction = 1200, .pas_simulation = 70,
+  },
+  { /* 4 — Nerual */
+    .nom = "Nerual",
+    .largeur = 60, .cxx = 97, .cyy = 100, .cxp = 70, .cyp = 130, .cxx2 = 97,
+    .cyy2 = 100, .cxp2 = 0, .cyp2 = 0, .x_min = -220, .x_max = 220,
+    .y_pres = 0, .y_loin = 290, .vr_droite = 4, .vr_gauche = 5,
+    .vr_loin = 4, .vr_pres = 4, .pas_gauche = 58, .pas_droite = 53,
+    .pas_arriere = 82, .pas_avant = 61, .pas_frappe_x = 161,
+    .pas_frappe_y = 238, .disp_x_min = 0, .disp_x_max = 0, .disp_y_min = 0,
+    .disp_y_max = 0, .cible_x_min = -11, .cible_x_max = 13,
+    .cible_y_min = 22, .cible_y_max = 55, .erreur_visee = 0,
+    .seuil_reaction = 1200, .pas_simulation = 78,
+  },
+  { /* 5 — Eneg */
+    .nom = "Eneg",
+    .largeur = 80, .cxx = 15, .cyy = 30, .cxp = 100, .cyp = 100, .cxx2 = 15,
+    .cyy2 = 30, .cxp2 = 0, .cyp2 = 0, .x_min = -164, .x_max = -64,
+    .y_pres = 89, .y_loin = 171, .vr_droite = 3, .vr_gauche = 3,
+    .vr_loin = 3, .vr_pres = 2, .pas_gauche = 123, .pas_droite = 65,
+    .pas_arriere = 71, .pas_avant = 77, .pas_frappe_x = 13,
+    .pas_frappe_y = 14, .disp_x_min = -151, .disp_x_max = 158,
+    .disp_y_min = 193, .disp_y_max = 293, .cible_x_min = -87,
+    .cible_x_max = 67, .cible_y_min = 136, .cible_y_max = 231,
+    .erreur_visee = 5, .seuil_reaction = 1200, .pas_simulation = 80,
+  },
+  { /* 6 — Bejin */
+    .nom = "Bejin",
+    .largeur = 50, .cxx = 10, .cyy = 37, .cxp = 49, .cyp = 102, .cxx2 = 10,
+    .cyy2 = 37, .cxp2 = 0, .cyp2 = 0, .x_min = 0, .x_max = 0, .y_pres = 0,
+    .y_loin = 0, .vr_droite = 2, .vr_gauche = 3, .vr_loin = 10,
+    .vr_pres = 10, .pas_gauche = 69, .pas_droite = 72, .pas_arriere = 83,
+    .pas_avant = 83, .pas_frappe_x = 13, .pas_frappe_y = 14,
+    .disp_x_min = -156, .disp_x_max = 165, .disp_y_min = 202,
+    .disp_y_max = 306, .cible_x_min = 0, .cible_x_max = 0,
+    .cible_y_min = 49, .cible_y_max = 49, .erreur_visee = 0,
+    .seuil_reaction = 1200, .pas_simulation = 80,
+  },
+  { /* 7 — Biff */
+    .nom = "Biff",
+    .largeur = 100, .cxx = 13, .cyy = 40, .cxp = 72, .cyp = 184, .cxx2 = 13,
+    .cyy2 = 40, .cxp2 = 0, .cyp2 = 0, .x_min = -77, .x_max = 81,
+    .y_pres = 124, .y_loin = 274, .vr_droite = 10, .vr_gauche = 10,
+    .vr_loin = 10, .vr_pres = 10, .pas_gauche = 66, .pas_droite = 64,
+    .pas_arriere = 63, .pas_avant = 64, .pas_frappe_x = 13,
+    .pas_frappe_y = 14, .disp_x_min = -152, .disp_x_max = 159,
+    .disp_y_min = 194, .disp_y_max = 294, .cible_x_min = 0,
+    .cible_x_max = 104, .cible_y_min = 84, .cible_y_max = 300,
+    .erreur_visee = 0, .seuil_reaction = 1200, .pas_simulation = 91,
+  },
+  { /* 8 — Dc3 */
+    .nom = "Dc3",
+    .largeur = 100, .cxx = 15, .cyy = 16, .cxp = 15, .cyp = 16, .cxx2 = 15,
+    .cyy2 = 16, .cxp2 = 0, .cyp2 = 0, .x_min = -200, .x_max = 200,
+    .y_pres = 150, .y_loin = 150, .vr_droite = 3, .vr_gauche = 3,
+    .vr_loin = 10, .vr_pres = 10, .pas_gauche = 17, .pas_droite = 17,
+    .pas_arriere = 17, .pas_avant = 17, .pas_frappe_x = 14,
+    .pas_frappe_y = 14, .disp_x_min = -156, .disp_x_max = 165,
+    .disp_y_min = 202, .disp_y_max = 300, .cible_x_min = -86,
+    .cible_x_max = 72, .cible_y_min = 109, .cible_y_max = 218,
+    .erreur_visee = 0, .seuil_reaction = 1200, .pas_simulation = 92,
+  },
 };
 
 /* Le joueur : seul a conserver un transfert de puissance dans le jeu 2
- * (70 / 140 au lieu de 0 / 0).
+ * (70 / 140 au lieu de 0 / 0 chez tous les adversaires).
  */
 const SpRaquette sp_joueur_defaut = {
-    0, 150, 0, 0, 100,
-    50, 50, 70, 130,
-    50, 50, 70, 140,
-    0,
-    0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0, 0,0,0,0, 0, 0, 0, "Joueur"
+    .nom = "Joueur", .y = 150, .largeur = 100,
+    .cxx  = 50, .cyy  = 50, .cxp  = 70, .cyp  = 130,
+    .cxx2 = 50, .cyy2 = 50, .cxp2 = 70, .cyp2 = 140,
 };
