@@ -72,6 +72,8 @@ typedef struct {
     int vr_droite, vr_gauche, vr_loin, vr_pres; /* +$26..+$2C */
     int pas_gauche, pas_droite, pas_arriere, pas_avant; /* +$2E..+$34 */
     int pas_frappe_x, pas_frappe_y;  /* +$36 +$38 */
+    int disp_x_min, disp_x_max;      /* +$3A +$3C  dispersion du point de frappe */
+    int disp_y_min, disp_y_max;      /* +$3E +$40 */
     int cible_x_min, cible_x_max;    /* +$42 +$44 */
     int cible_y_min, cible_y_max;    /* +$46 +$48 */
     int erreur_visee;        /* +$4A */
