@@ -480,3 +480,73 @@ de remonter aux appelants de chacune de ces fonctions. Non fait, donc non affirm
 Le son du rebond et celui de la frappe sont les deux effets du cœur de jeu, et ils
 sont identifiés. Le tell sonore de Bejin l'est aussi, avec ses deux identifiants —
 c'est la mécanique la plus fine du jeu et elle est reproductible telle quelle.
+
+---
+
+# Projection en perspective
+
+Deux fonctions, appelées **par paires** depuis les mêmes endroits (`0xDC6E`/`0xDC7E`,
+`0xDC94`/`0xDCA4`, `0xDEDC`/`0xDEBC`).
+
+## Abscisse — `$DB9C(X, Y)` ✅ vérifiée
+
+```
+ecranX = X * 411 / (Y + 643) + 160
+```
+
+Division de perspective à un point de fuite. `160` est le centre d'un écran de 320.
+
+### Vérification indépendante
+
+La formule vient du code ; les bornes du terrain (`X = ±226`, `Y` de 295 à 1205)
+viennent de la routine de physique, trouvée séparément. Les deux se recoupent :
+
+| Profondeur | Mur gauche | Centre | Mur droit | Largeur |
+|---|---|---|---|---|
+| Y = 295 (ligne joueur) | 60 | **160** | 259 | 199 |
+| Y = 600 | 85 | **160** | 234 | 149 |
+| Y = 900 | 99 | **160** | 220 | 121 |
+| Y = 1205 (ligne adverse) | 109 | **160** | 210 | 101 |
+| Y = 1500 (fond) | 116 | **160** | 203 | 87 |
+
+Le centre tombe exactement sur 160 à toute profondeur, la table rétrécit
+régulièrement, et tout reste dans `[0, 320]`. Deux résultats obtenus séparément qui
+s'accordent.
+
+## Ordonnée — `$DBC2(X, Y)` ⚠️ extraite, non validée
+
+```
+t      = Y * 207 / (Y + 970)
+ecranY = (193 - t)  -  X * (164 - t) / 512
+```
+
+⚠️ **Cette formule fait dépendre l'ordonnée de l'abscisse**, ce qui incline le bord de
+la table. Aux valeurs du terrain, le bord proche s'étalerait de l'ordonnée 94 à 196 —
+une pente très marquée pour une table qui paraît symétrique à l'écran.
+
+Soit l'inclinaison est réelle et voulue, soit ma lecture de l'ordre des arguments est
+fausse pour cette fonction. **Non tranché.** À confirmer en comparant le résultat
+calculé à la position réelle du palet à l'écran.
+
+La formule de l'abscisse, elle, ne souffre aucun doute.
+
+---
+
+# Animation de la vitre brisée
+
+`0x00F23A` initialise, `0x00F28C` anime : **13 éclats**, enregistrements de 14 octets
+à partir de `$19B12`.
+
+```
+energie = (150 - dY_palet) / 4          <- vient de la vitesse a l'impact
+
+pour chacun des 13 eclats, a chaque image :
+    position_X += vitesse_X / 8
+    position_Y += vitesse_Y / 8
+    vitesse_Y  += 12                     <- gravite
+tant qu'un eclat a une ordonnee < 150, l'animation continue
+```
+
+Le point d'origine des éclats vient de la projection du palet (`$DB9C`). L'énergie est
+proportionnelle à la vitesse d'arrivée : plus le tir est violent, plus la vitre explose
+loin.
