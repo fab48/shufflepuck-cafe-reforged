@@ -2,7 +2,9 @@
 rem ============================================================
 rem  Shufflepuck Cafe (Atari ST, Loriciel/Broderbund, 1989, v1.0)
 rem  Lancement Hatari AVEC ENREGISTREMENT VIDEO
-rem  Chaque trame est ecrite en PNG dans work\captures\partie.avi
+rem  BMP non compresse : aucun calcul a l enregistrement.
+rem  25 images par seconde suffisent, et divisent le debit par deux.
+rem  Chaque trame est ecrite en BMP dans work\captures\partie.avi
 rem
 rem  Images copiees sous des noms sans ambiguite dans work\disks\ :
 rem    disk1.stx = amorcage, protegee (piste 79, 70 secteurs fantomes)
@@ -43,7 +45,8 @@ set DISKDIR=D:\projets\shufflepuck\work\disks
   --ym-mixing model ^
   --window ^
   --avirecord ^
-  --avi-vcodec png ^
+  --avi-vcodec bmp ^
+  --avi-fps 25 ^
   --avi-file D:\projets\shufflepuck\work\captures\partie.avi ^
   --grab ^
   %*

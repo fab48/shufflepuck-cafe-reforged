@@ -26,7 +26,14 @@ def main(avi, dossier, pas=1):
     k = 0
     for n, png in trames(avi):
         if n % pas: continue
-        open(os.path.join(dossier, f"trame_{n:05d}.png"), 'wb').write(png)
+        if png[:8] == b'PNG
+
+':
+            donnees = png
+        else:
+            donnees = bmp_vers_png(png)
+            if donnees is None: continue
+        open(os.path.join(dossier, f"trame_{n:05d}.png"), 'wb').write(donnees)
         k += 1
     print(f"{k} trames extraites dans {dossier}")
 
