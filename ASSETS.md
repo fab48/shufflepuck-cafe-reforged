@@ -482,3 +482,32 @@ et aucune image Degas non compressée nulle part.
 Je le note comme un fait, pas comme un échec de recherche : le code qui
 les charge est atteignable, mais les fichiers ne sont pas là. Soit ce
 tirage ne les contient pas, soit ils sont produits autrement.
+
+---
+
+# Chaque adversaire a sa voix
+
+Un `.TC0` porte deux parties. La partie 1 est la banque de sprites. La
+partie 0, qui restait non résolue, est une **banque sonore au format
+`.ECH` exactement** : deux compteurs, une table d'offsets, N2 séquences
+de paires (échantillon, TADR) terminées par `$FF`, puis N1 échantillons.
+
+Les neuf fichiers contiennent donc, chacun, les images **et la voix** de
+leur personnage. C'est ce qui explique leur taille.
+
+Le premier est le plus bavard — 11 échantillons, 10 séquences, et
+plusieurs séquences enchaînent trois ou quatre échantillons à des
+hauteurs légèrement différentes pour composer une réplique :
+
+    séquence 1 : #0@9035Hz + #1@9035Hz + #2@9035Hz
+    séquence 4 : #2@9752Hz + #3@8777Hz + #6@9035Hz + #7@9035Hz
+    séquence 8 : #8@9752Hz + #3@8777Hz + #6@9035Hz + #2@9035Hz
+    séquence 9 : #10@10240Hz          (1,72 s — la plus longue)
+
+Le même échantillon revient dans plusieurs séquences, à des hauteurs
+différentes : le jeu compose ses répliques par recombinaison, exactement
+comme il compose ses rebonds par transposition.
+
+**33 fichiers WAV extraits**, dont 32 passent le contrôle de
+vraisemblance (centrés sur 127, dynamique pleine, 10 à 56 % de passages
+par le centre). `work/assets/voix/` — `tools/extraire_voix.py`.
