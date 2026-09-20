@@ -349,3 +349,59 @@ de toucher.
 
 **Dc3** est uniforme partout (17 en poursuite, 14 en frappe) â€” le partenaire
 d'entraÃ®nement neutre.
+
+---
+
+# Service et cas particuliers (`0x010D44`)
+
+Un compteur `$19D12` décompte à chaque appel ; à zéro il est rechargé à **30** et la
+routine choisit une cible de service.
+
+## Cas général — tous sauf Bejin et Biff
+
+```
+cible_X = aleatoire( $42(a6) , $44(a6) )
+cible_Y = aleatoire( $46(a6) , $48(a6) )  +  1205
+```
+
+`$42`/`$44` et `$46`/`$48` sont donc les **bornes de la cible de service**.
+
+## Bejin (`$1B5AC == 6`) — le service télékinésique
+
+```
+$1B5B2 = aleatoire & 1
+$1B5B4 = aleatoire & 1          <- decide la direction
+$1B598 = 6
+jsr $115DE( $1B5B4 )            <- SON choisi par ce meme tirage
+```
+
+Deux bits tirés au hasard, et **le son joué dépend du bit qui décide de la
+direction**. C'est l'indice sonore : écouter son service permet de l'anticiper.
+Mécanique confirmée dans le code d'origine.
+
+## Biff (`$1B5AC == 7`) — adaptation au score
+
+```
+ecart = $1B58A - $1B588                    difference de score
+pas   = borner(-10, ecart, +10) + 10       ->  0 a 20
+
+cible_X = $44(a6) * pas / 20               signe aleatoire
+cible_Y = $46(a6) + ($48 - $46) * pas / 20  + 1205
+```
+
+**Le service de Biff s'ajuste à l'écart de score.** C'est une adaptation au
+déroulement du match, pas une dégradation dans le temps.
+
+## Bornes de cible de service
+
+| Nom | `$42` | `$44` | `$46` | `$48` |
+|---|---|---|---|---|
+| Skip | -18 | 15 | 88 | 120 |
+| Vinnie | -50 | 11 | 84 | 127 |
+| Visine | -230 | 1 | 26 | 59 |
+| Lexan | -86 | -5 | 103 | 206 |
+| Nerual | -11 | 13 | 22 | 55 |
+| Eneg | -87 | 67 | 136 | 231 |
+| Bejin | 0 | 0 | 49 | 49 |
+| Biff | 0 | 104 | 84 | 300 |
+| Dc3 | -86 | 72 | 109 | 218 |
