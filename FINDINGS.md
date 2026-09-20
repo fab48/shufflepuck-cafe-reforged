@@ -324,3 +324,23 @@ Ce qui reste non atteint est en bonne partie **des données** : les libellés
 de l'éditeur (1 006 o, 93 % ASCII), les séquences de registres YM à
 `0x014296` (motif `08 xx 09 xx 0a xx 00 00` — les registres de volume du
 YM2149), les tables d'index à `0x00BE2A`.
+
+### L'audio : deux conclusions antérieures étaient chacune à moitié vraie
+
+J'avais écrit que les sons n'étaient « pas des échantillons mais des
+paramètres YM2149 ». Puis les fichiers `.ECH` ont livré des formes d'onde
+manifestes. Les deux sont vraies, et c'est justement le mécanisme :
+
+**les échantillons existent, et ils sont joués par des écritures de
+paramètres YM.** Le STF n'ayant pas de DMA audio, chaque octet de
+l'échantillon indexe un triplet de volumes des trois voies dans une table
+de 256 entrées à `0x014296` — cette table que j'avais prise pour un banc de
+sons alors qu'elle est un **convertisseur**. Le Timer A en consomme un par
+tic.
+
+Détail des preuves dans `ASSETS.md`. Le point méthodologique : j'avais
+identifié le bon objet (des paramètres YM) et lui avais attribué le mauvais
+rôle. Reconnaître une structure ne dit pas à quoi elle sert.
+
+*Ouvert :* le binaire nomme deux banques, `ringard.ech` et `shuffle.ech` ;
+une seule a été trouvée sur les disquettes.

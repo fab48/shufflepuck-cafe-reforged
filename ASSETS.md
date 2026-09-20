@@ -158,3 +158,101 @@ adversaires, les raquettes, le palet, le bris de verre. Ces éléments sont
 dans les autres formats que le binaire nomme — **`.TC0`**, **`.CPL`**, et les
 fichiers `sprites` / `barsprit` chargés depuis `0x00D212` et `0x00D224`.
 Leurs chargeurs sont identifiés mais leurs formats ne sont pas résolus.
+
+---
+
+# L'audio numérisé, récupéré et converti
+
+## Comment un STF joue du son numérisé sans DMA
+
+Le STF n'a pas de canal audio DMA — c'est le STE qui l'apporte. Shufflepuck
+joue pourtant des sons numérisés. Le mécanisme, établi entièrement par
+lecture du code :
+
+Le gestionnaire du **Timer A du MFP** (vecteur `$134`, routine `0x014240`)
+consomme **un octet par tic** dans un flux, et s'en sert comme **index dans
+une table de 256 entrées à `0x014296`**. Chaque entrée porte trois paires
+registre/valeur écrites d'un coup au YM2149 par `movep` :
+
+    014246  movea.l #$3b578, a0        ; curseur courant
+    01424e  move.b  (a0)+, d0          ; un octet du flux
+    014250  beq     $1427c             ; zéro = fin
+    014252  move.l  a0, $14248.l       ; réécrit son propre opérande
+    014258  lea     $8800.w, a0        ; le YM2149
+    01425c  lsl.w   #$3, d0            ; index x 8
+    01425e  move.l  $14296(pc, d0.w), d1
+    014262  move.w  $1429a(pc, d0.w), d0
+    014266  movep.l d1, $0(a0)         ; (R8,v) (R9,v)
+    01426a  movep.w d0, $0(a0)         ; (R10,v)
+
+Les registres 8, 9 et 10 du YM2149 sont les **volumes des trois voies**. Le
+jeu module donc les trois volumes à la fréquence d'échantillonnage : trois
+convertisseurs de 4 bits combinés donnent une résolution proche de 8 bits.
+
+Le code est **auto-modifiant** : `0x014252` réécrit l'opérande immédiat de
+`0x014246`. C'est ce qui fait tenir le gestionnaire en une poignée
+d'instructions.
+
+## Ce que les octets signifient, et comment on le sait
+
+La table fait **exactement 256 entrées de 8 octets**, toutes de la forme
+`(R8=v1, R9=v2, R10=v3)` — une par valeur d'octet possible. C'est déjà
+dirimant : il s'agit d'une conversion octet → amplitude.
+
+Restait à savoir dans quel sens. Trois modèles ont été mis en concurrence
+en ajustant par moindres carrés une courbe de DAC à 15 inconnues
+(`f(0)=0`, `f(1)`…`f(15)` libres), sur les 256 équations
+`f(v1)+f(v2)+f(v3) = cible` :
+
+| modèle | erreur moyenne |
+|---|---:|
+| amplitude ∝ **(127 − octet signé)** | **2,4 %** |
+| amplitude ∝ (octet signé + 128) | 5,3 % |
+| amplitude ∝ \|octet signé\| | 17,8 % |
+
+Et la courbe reconstituée a des rapports successifs groupés autour de
+**1,4** — soit 3 dB par pas, la signature documentée du YM2149.
+
+**Les échantillons sont donc du PCM signé 8 bits, stocké inversé.**
+
+## Format d'une banque `.ECH`
+
+Lu dans le chargeur `0x014B64` :
+
+    +$00  mot    N1   nombre d'échantillons
+    +$02  mot    N2   nombre de séquences
+    +$04  long[] table d'offsets relatifs au début du fichier
+
+    table[1..N2]     -> les séquences
+    table[N2+1]      -> sautée
+    table[N2+2...]   -> les échantillons ; longueur = différence avec le suivant
+
+Une **séquence** est une suite de paires `(numéro d'échantillon, TADR)`
+terminée par `$FF`. `TADR` est le diviseur du Timer A. Le stub d'armement
+à `0x014176` pose `TACR = 1`, soit un prescaler de **4**, d'où :
+
+    fréquence = 2 457 600 / (4 x TADR)
+
+## Ce qui a été extrait
+
+Banque trouvée sur la disquette 1, secteur 201, 141 053 octets.
+
+| # | Octets | TADR | Fréquence | Durée |
+|---|---:|---:|---:|---:|
+| 0 | 39 795 | 60 | 10 240 Hz | 3,89 s |
+| 1 | 59 098 | 58 | 10 593 Hz | 5,58 s |
+| 2 | 26 505 | 87 | 7 062 Hz | 3,75 s |
+| 3 | 15 528 | 67 | 9 170 Hz | 1,69 s |
+| 4 | 7 | 60 | — | (bouchon) |
+
+Contrôle de vraisemblance : les quatre se centrent sur 127,0–127,3 (centre
+exact d'un 8 bits non signé), occupent toute la plage 0–255, et présentent
+5 % à 26 % de passages par le centre. C'est du signal audio, pas du bruit.
+
+`work/assets/wav/` — `tools/extraire_ech.py`.
+
+## Ce qui reste
+
+Le binaire nomme **deux** banques, `ringard.ech` et `shuffle.ech`, et une
+seule a été trouvée. La seconde est soit ailleurs sur la disquette 1 sous
+une forme que la signature ne reconnaît pas, soit absente de ce tirage.
