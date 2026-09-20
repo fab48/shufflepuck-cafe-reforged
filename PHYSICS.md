@@ -550,3 +550,62 @@ tant qu'un eclat a une ordonnee < 150, l'animation continue
 Le point d'origine des éclats vient de la projection du palet (`$DB9C`). L'énergie est
 proportionnelle à la vitesse d'arrivée : plus le tir est violent, plus la vitre explose
 loin.
+
+---
+
+# L'ivresse de Lexan
+
+## Correction d'un résultat négatif antérieur
+
+J'avais conclu qu'aucune mécanique ne dégradait progressivement un adversaire, en me
+fondant sur l'absence d'écriture dans le bloc adverse (`+$08` à `+$18`). **La portée de
+cette recherche était trop étroite** : la dégradation existe, elle passe par un jeu de
+variables séparé.
+
+## Le mécanisme (`0x0110BA`)
+
+```
+si $1B5AC != 3 (Lexan) : sortir
+
+pour chacune des dix variables $1B5DC .. $1B5EE :
+    v = v * 82 / 100
+```
+
+Dix variables réduites de **18 %**, et la réduction **se cumule** d'un appel au suivant.
+Le code est gardé par un test explicite sur l'index de l'adversaire : **Lexan
+uniquement**.
+
+## Ce que sont ces dix variables ✅ vérifié
+
+Relevées en cours de match, elles valent `22, 42, 43, 61, 120, 128, 113, 106, 89, 88`.
+Ce sont **exactement les dix paramètres de vitesse de Lexan**, dans l'ordre :
+
+| Adresse | Correspond à | Valeur | Rôle |
+|---|---|---|---|
+| `$1B5DC`…`$1B5E2` | `+$26`…`+$2C` | 22, 42, 43, 61 | vitesses de rebond (patrouille) |
+| `$1B5E4`…`$1B5EA` | `+$2E`…`+$34` | 120, 128, 113, 106 | vitesses de poursuite |
+| `$1B5EC`…`$1B5EE` | `+$36`, `+$38` | 89, 88 | vitesses de frappe |
+
+Dix valeurs concordant dans l'ordre : la correspondance n'est pas fortuite.
+
+**Lexan ralentit donc dans tous ses modes de déplacement simultanément** — patrouille,
+poursuite et frappe. Il démarre avec la poursuite la plus rapide du jeu (120/128) et
+se dégrade au fil du match.
+
+## Déclenchement
+
+Appelée depuis `0x00D440`, après un point marqué :
+
+```
+si $1B588 == 1  ->  boire
+sinon, tirage a pile ou face  ->  boire une fois sur deux
+```
+
+Il ne boit donc pas systématiquement : la dégradation est probabiliste.
+
+## ⚠️ Ce qui reste à tracer
+
+Le chemin par lequel ces valeurs dégradées reviennent dans le bloc que lit l'IA n'est
+pas encore identifié — celle-ci accède au bloc par le pointeur `$1B5A4`, pas à ces
+adresses absolues. Le mécanisme et les valeurs sont certains ; la réinjection ne l'est
+pas.
