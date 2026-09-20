@@ -1005,3 +1005,64 @@ void lexan_boit(SpRaquette *r) {
 
 Épargnés : largeur de raquette, bornes en profondeur, seuil de réaction, profondeur
 d'anticipation. Il perd ses moyens physiques, pas sa lucidité.
+
+
+---
+
+# Dispersion du point de frappe (`+$3A`–`+$40`) — derniers champs résolus
+
+`$FDCE(min, max)` est un tirage uniforme dans un intervalle :
+
+```
+d3 = max - min + 1
+resultat = (aleatoire mod d3) + min
+```
+
+Dans la routine de poursuite, **dès que l'adversaire atteint la cible prédite** :
+
+```
+$1B598 = 2                              etat "arrive"
+$1AFC4 = $1AFBC                         memoriser le point d'interception
+$1AFC6 = $1AFBE
+
+$1AFBC += alea( $3A(a6), $3C(a6) )      dispersion laterale
+$1AFBE += alea( $3E(a6), $40(a6) )      dispersion en profondeur
+```
+
+Ce ne sont donc **pas** des bornes de zone mais la **dispersion du point de frappe** :
+après avoir intercepté, l'adversaire se décale d'une quantité tirée au sort. C'est le
+mécanisme qui fait varier ses angles de renvoi.
+
+| Nom | Latéral min | Latéral max | Étendue | Profondeur min | max | Étendue |
+|---|---|---|---|---|---|---|
+| Skip | -60 | 66 | 126 | 34 | 30 | -4 |
+| Vinnie | -151 | 158 | 309 | 193 | 293 | 100 |
+| Visine | -55 | 58 | 113 | 45 | 93 | 48 |
+| Lexan | -149 | 155 | 304 | 189 | 288 | 99 |
+| Nerual | 0 | 0 | 0 | 0 | 0 | 0 |
+| Eneg | -151 | 158 | 309 | 193 | 293 | 100 |
+| Bejin | -156 | 165 | 321 | 202 | 306 | 104 |
+| Biff | -152 | 159 | 311 | 194 | 294 | 100 |
+| Dc3 | -156 | 165 | 321 | 202 | 300 | 98 |
+
+## Lecture
+
+**Nerual : 0, 0, 0, 0.** Aucune dispersion — il frappe exactement au point
+d'interception qu'il a calculé. Avec son erreur de visée nulle, la zone de patrouille
+la plus large du jeu et 97/100 % de restitution de vitesse, il est **mathématiquement
+parfait**.
+
+**Visine (113) et Skip (126)** ont les dispersions les plus faibles : leurs renvois
+sont réguliers. Chez Visine cela compense sa réaction très tardive ; chez Skip cela ne
+suffit pas face à son erreur de visée de ±50 et à ses vitesses minimales.
+
+**Les six autres** se situent entre 304 et 321 : renvois très imprévisibles.
+
+## ⚠️ Anomalie chez Skip
+
+Sa dispersion en profondeur est `alea(34, 30)` — **borne haute inférieure à la borne
+basse**. Le calcul `max - min + 1` donne −3, soit une division par un nombre négatif
+dans `$FDCE`. Le résultat est imprévisible et n'était certainement pas voulu.
+
+**Probable bogue de l'original.** Un portage fidèle doit décider s'il le reproduit ou
+le corrige — le signaler plutôt que le gommer silencieusement.
