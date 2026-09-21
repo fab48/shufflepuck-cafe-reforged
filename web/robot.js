@@ -46,20 +46,33 @@ export class Robot {
     this.dessinerTableau(this.decor);
   }
 
-  // $00E0A6 : le tableau, et les deux noms.
-  // RECONSTRUCTION : la fonte d'origine (quete.fnt) n'est pas extraite ; les
-  // noms sont ecrits avec une fonte du navigateur, a la meme position.
+  // $00E0A6 : le tableau, et les deux noms, dans la fonte d'origine.
   dessinerTableau(c) {
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
     g.fillStyle = this.c0; g.fillRect(0, 0, c.width, c.height);
     const s = this.json.sprites[1];
     g.drawImage(this.img, s.x, s.y, s.w, s.h, 0, 30 - s.h + 1, s.w, s.h);
+    this.texte(g, 'Visiteur', 5, 9);             // $14FA4 (5, 9)
+    this.texte(g, this.mo.A.nom, 5, 20);         // +$52 du bloc, $14FA4 (5, 20)
+  }
+
+  // $14FA4 : une chaine, pixel par pixel. Seuls les pixels allumes du glyphe
+  // sont ecrits (couleur 15) ; le fond reste. Le y est la ligne du HAUT.
+  texte(g, chaine, x, y) {
+    const F = this.m.fonte;
     g.fillStyle = this.c15;
-    g.font = '7px monospace';
-    g.textBaseline = 'top';
-    g.fillText('Visiteur', 5, 9);                                  // $14FA4 (5, 9)
-    g.fillText(this.mo.A.nom, 5, 20);                  // +$52 du bloc, $14FA4 (5, 20)
+    for (const ch of chaine) {
+      const gl = F.glyphes[ch];
+      const l = gl ? gl.l : 0;
+      if (gl) {
+        gl.p.forEach((ligne, dy) => {
+          for (let dx = 0; dx < ligne.length; dx++)
+            if (ligne[dx] === '1') g.fillRect(x + dx, y + dy, 1, 1);
+        });
+      }
+      x += (l || 3) + F.espacement;              // espace : 3 pixels
+    }
   }
 
   // $00DFEC : l'abscisse du n-ieme baton. Groupes de cinq, 18 px par groupe,
