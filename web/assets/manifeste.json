@@ -410,47 +410,1364 @@
  },
  "adversaires": [
   {
-   "sprites": "sprites_adv0.json",
+   "fichier": "skip",
+   "tc0": "disk2_011c00",
+   "placement": [
+    [
+     13,
+     0,
+     56,
+     47
+    ],
+    [
+     16,
+     -16,
+     31,
+     31
+    ],
+    [
+     16,
+     -16,
+     31,
+     31
+    ],
+    [
+     16,
+     -16,
+     31,
+     31
+    ],
+    [
+     16,
+     -16,
+     31,
+     31
+    ],
+    [
+     16,
+     -18,
+     27,
+     29
+    ],
+    [
+     16,
+     -18,
+     27,
+     29
+    ],
+    [
+     16,
+     -18,
+     27,
+     29
+    ],
+    [
+     16,
+     -18,
+     27,
+     29
+    ],
+    [
+     16,
+     -18,
+     26,
+     29
+    ],
+    [
+     -1,
+     1,
+     0,
+     -4598
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 100370,
+     "mode": 1
+    }
+   ],
+   "sprites": "sprites_skip.json",
+   "nombre_sprites": 11,
+   "sons": [
+    {
+     "fichier": "son_skip_0.wav",
+     "frequence": 12047
+    },
+    {
+     "fichier": "son_skip_1.wav",
+     "frequence": 12047
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 60,
+      "frequence": 10240
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "visine",
+   "tc0": "disk2_014600",
+   "placement": [
+    [
+     10,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ],
+    [
+     0,
+     0,
+     62,
+     19
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 100600,
+     "mode": 1
+    }
+   ],
+   "sprites": "sprites_visine.json",
+   "nombre_sprites": 8,
+   "sons": [
+    {
+     "fichier": "son_visine_0.wav",
+     "frequence": 9752
+    },
+    {
+     "fichier": "son_visine_1.wav",
+     "frequence": 9170
+    },
+    {
+     "fichier": "son_visine_2.wav",
+     "frequence": 9170
+    },
+    {
+     "fichier": "son_visine_3.wav",
+     "frequence": 10240
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 63,
+      "frequence": 9752
+     },
+     {
+      "echantillon": 1,
+      "tadr": 67,
+      "frequence": 9170
+     },
+     {
+      "echantillon": 0,
+      "tadr": 63,
+      "frequence": 9752
+     },
+     {
+      "echantillon": 1,
+      "tadr": 67,
+      "frequence": 9170
+     },
+     {
+      "echantillon": 2,
+      "tadr": 67,
+      "frequence": 9170
+     }
+    ],
+    [
+     {
+      "echantillon": 3,
+      "tadr": 60,
+      "frequence": 10240
+     }
+    ],
+    [
+     {
+      "echantillon": 4,
+      "tadr": 68,
+      "frequence": 9035
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "vinnie",
+   "tc0": "disk2_019000",
+   "placement": [
+    [
+     2,
+     0,
+     81,
+     62
+    ],
+    [
+     23,
+     -20,
+     39,
+     33
+    ],
+    [
+     23,
+     -20,
+     39,
+     33
+    ],
+    [
+     23,
+     -20,
+     39,
+     33
+    ],
+    [
+     23,
+     -20,
+     39,
+     33
+    ],
+    [
+     27,
+     -32,
+     33,
+     21
+    ],
+    [
+     27,
+     -32,
+     33,
+     21
+    ],
+    [
+     27,
+     -32,
+     33,
+     21
+    ],
+    [
+     27,
+     -32,
+     33,
+     21
+    ],
+    [
+     27,
+     -32,
+     33,
+     21
+    ],
+    [
+     27,
+     -32,
+     33,
+     21
+    ],
+    [
+     21,
+     -21,
+     45,
+     37
+    ],
+    [
+     21,
+     -21,
+     45,
+     37
+    ],
+    [
+     21,
+     -21,
+     45,
+     37
+    ],
+    [
+     0,
+     0,
+     81,
+     62
+    ],
+    [
+     0,
+     0,
+     81,
+     62
+    ],
+    [
+     0,
+     0,
+     81,
+     62
+    ],
+    [
+     0,
+     0,
+     81,
+     62
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 101044,
+     "mode": 1
+    },
+    {
+     "adresse": 100994,
+     "mode": 1
+    },
+    {
+     "adresse": 101064,
+     "mode": 0
+    }
+   ],
+   "sprites": "sprites_vinnie.json",
+   "nombre_sprites": 18,
+   "sons": [
+    {
+     "fichier": "son_vinnie_0.wav",
+     "frequence": 10593
+    },
+    {
+     "fichier": "son_vinnie_1.wav",
+     "frequence": 9170
+    },
+    {
+     "fichier": "son_vinnie_2.wav",
+     "frequence": 12047
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 58,
+      "frequence": 10593
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 67,
+      "frequence": 9170
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 3,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "lexan",
+   "tc0": "disk2_022a00",
+   "placement": [
+    [
+     1,
+     0,
+     93,
+     66
+    ],
+    [
+     0,
+     0,
+     93,
+     66
+    ],
+    [
+     11,
+     -19,
+     54,
+     47
+    ],
+    [
+     11,
+     -42,
+     54,
+     24
+    ],
+    [
+     11,
+     -42,
+     54,
+     24
+    ],
+    [
+     11,
+     -42,
+     54,
+     24
+    ],
+    [
+     11,
+     -42,
+     54,
+     24
+    ],
+    [
+     72,
+     -33,
+     19,
+     15
+    ],
+    [
+     72,
+     -33,
+     19,
+     15
+    ],
+    [
+     72,
+     -33,
+     19,
+     15
+    ],
+    [
+     72,
+     -33,
+     19,
+     15
+    ],
+    [
+     72,
+     -33,
+     19,
+     15
+    ],
+    [
+     72,
+     -33,
+     19,
+     13
+    ],
+    [
+     72,
+     -33,
+     19,
+     13
+    ],
+    [
+     72,
+     -33,
+     19,
+     15
+    ],
+    [
+     72,
+     -33,
+     19,
+     14
+    ],
+    [
+     72,
+     -33,
+     19,
+     13
+    ],
+    [
+     0,
+     0,
+     95,
+     66
+    ],
+    [
+     0,
+     0,
+     95,
+     66
+    ],
+    [
+     0,
+     1,
+     95,
+     67
+    ],
+    [
+     0,
+     1,
+     95,
+     67
+    ],
+    [
+     0,
+     1,
+     95,
+     67
+    ],
+    [
+     0,
+     1,
+     95,
+     67
+    ],
+    [
+     0,
+     1,
+     95,
+     67
+    ],
+    [
+     0,
+     1,
+     95,
+     67
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 101688,
+     "mode": 1
+    },
+    {
+     "adresse": 101708,
+     "mode": 1
+    },
+    {
+     "adresse": 101808,
+     "mode": 0
+    }
+   ],
+   "sprites": "sprites_lexan.json",
+   "nombre_sprites": 25,
+   "sons": [
+    {
+     "fichier": "son_lexan_0.wav",
+     "frequence": 10778
+    },
+    {
+     "fichier": "son_lexan_1.wav",
+     "frequence": 7144
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 57,
+      "frequence": 10778
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 86,
+      "frequence": 7144
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 57,
+      "frequence": 10778
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "nerual",
+   "tc0": "disk2_03d600",
+   "placement": [
+    [
+     1,
+     0,
+     84,
+     64
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     35
+    ],
+    [
+     0,
+     0,
+     84,
+     32
+    ],
+    [
+     0,
+     0,
+     84,
+     32
+    ],
+    [
+     0,
+     0,
+     84,
+     32
+    ],
+    [
+     0,
+     0,
+     84,
+     32
+    ],
+    [
+     0,
+     0,
+     84,
+     32
+    ],
+    [
+     0,
+     0,
+     84,
+     32
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 102592,
+     "mode": 1
+    },
+    {
+     "adresse": 102542,
+     "mode": 1
+    }
+   ],
+   "sprites": "sprites_nerual.json",
+   "nombre_sprites": 14,
+   "sons": [
+    {
+     "fichier": "son_nerual_0.wav",
+     "frequence": 12047
+    },
+    {
+     "fichier": "son_nerual_1.wav",
+     "frequence": 12047
+    },
+    {
+     "fichier": "son_nerual_2.wav",
+     "frequence": 10778
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 57,
+      "frequence": 10778
+     }
+    ],
+    [
+     {
+      "echantillon": 3,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "general",
+   "tc0": "disk2_02ae00",
+   "placement": [
+    [
+     -5,
+     0,
+     92,
+     62
+    ],
+    [
+     0,
+     0,
+     92,
+     62
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     22,
+     -17,
+     44,
+     45
+    ],
+    [
+     21,
+     -17,
+     45,
+     45
+    ],
+    [
+     22,
+     -17,
+     44,
+     49
+    ],
+    [
+     25,
+     -17,
+     41,
+     49
+    ],
+    [
+     21,
+     -16,
+     50,
+     53
+    ],
+    [
+     23,
+     -17,
+     45,
+     45
+    ],
+    [
+     25,
+     -17,
+     43,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     24,
+     -17,
+     42,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -14,
+     41,
+     48
+    ],
+    [
+     25,
+     -14,
+     41,
+     48
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -15,
+     41,
+     47
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ],
+    [
+     25,
+     -17,
+     41,
+     45
+    ]
+   ],
+   "scripts": [],
+   "sprites": "sprites_general.json",
+   "nombre_sprites": 26,
+   "sons": [
+    {
+     "fichier": "son_general_0.wav",
+     "frequence": 9909
+    },
+    {
+     "fichier": "son_general_1.wav",
+     "frequence": 10593
+    },
+    {
+     "fichier": "son_general_2.wav",
+     "frequence": 10778
+    },
+    {
+     "fichier": "son_general_3.wav",
+     "frequence": 12047
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 62,
+      "frequence": 9909
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 58,
+      "frequence": 10593
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 57,
+      "frequence": 10778
+     }
+    ],
+    [
+     {
+      "echantillon": 3,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 4,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "bejin",
+   "tc0": "disk2_048600",
+   "placement": [
+    [
+     10,
+     0,
+     60,
+     65
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     12,
+     -36,
+     39,
+     29
+    ],
+    [
+     -13,
+     0,
+     73,
+     35
+    ],
+    [
+     -13,
+     0,
+     73,
+     35
+    ],
+    [
+     -13,
+     0,
+     80,
+     35
+    ],
+    [
+     -14,
+     0,
+     85,
+     35
+    ],
+    [
+     -14,
+     0,
+     85,
+     35
+    ],
+    [
+     -35,
+     1,
+     144,
+     14
+    ],
+    [
+     -40,
+     1,
+     160,
+     15
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 103820,
+     "mode": 1
+    }
+   ],
+   "sprites": "sprites_bejin.json",
+   "nombre_sprites": 18,
+   "sons": [
+    {
+     "fichier": "son_bejin_0.wav",
+     "frequence": 12047
+    },
+    {
+     "fichier": "son_bejin_1.wav",
+     "frequence": 12288
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 50,
+      "frequence": 12288
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 51,
+      "frequence": 12047
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "biff",
+   "tc0": "disk2_050c00",
+   "placement": [
+    [
+     2,
+     0,
+     81,
+     65
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ],
+    [
+     23,
+     -26,
+     37,
+     30
+    ]
+   ],
+   "scripts": [],
+   "sprites": "sprites_biff.json",
+   "nombre_sprites": 9,
+   "sons": [
+    {
+     "fichier": "son_biff_0.wav",
+     "frequence": 10593
+    },
+    {
+     "fichier": "son_biff_1.wav",
+     "frequence": 12538
+    },
+    {
+     "fichier": "son_biff_2.wav",
+     "frequence": 9170
+    }
+   ],
+   "sequences": [
+    [
+     {
+      "echantillon": 0,
+      "tadr": 58,
+      "frequence": 10593
+     }
+    ],
+    [
+     {
+      "echantillon": 1,
+      "tadr": 49,
+      "frequence": 12538
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 67,
+      "frequence": 9170
+     }
+    ],
+    [
+     {
+      "echantillon": 3,
+      "tadr": 60,
+      "frequence": 10240
+     }
+    ],
+    [
+     {
+      "echantillon": 2,
+      "tadr": 63,
+      "frequence": 9752
+     },
+     {
+      "echantillon": 3,
+      "tadr": 70,
+      "frequence": 8777
+     },
+     {
+      "echantillon": 6,
+      "tadr": 68,
+      "frequence": 9035
+     },
+     {
+      "echantillon": 7,
+      "tadr": 68,
+      "frequence": 9035
+     }
+    ]
+   ]
+  },
+  {
+   "fichier": "droid",
+   "tc0": "disk2_008200",
+   "placement": [
+    [
+     9,
+     0,
+     64,
+     64
+    ],
+    [
+     15,
+     -28,
+     34,
+     36
+    ],
+    [
+     15,
+     -28,
+     34,
+     36
+    ],
+    [
+     15,
+     -28,
+     34,
+     36
+    ],
+    [
+     0,
+     0,
+     64,
+     64
+    ],
+    [
+     0,
+     0,
+     64,
+     64
+    ],
+    [
+     0,
+     0,
+     64,
+     64
+    ]
+   ],
+   "scripts": [
+    {
+     "adresse": 104716,
+     "mode": 1
+    }
+   ],
+   "sprites": "sprites_droid.json",
    "nombre_sprites": 7,
    "sons": [
     {
-     "fichier": "son_adv0_0.wav",
+     "fichier": "son_droid_0.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_1.wav",
+     "fichier": "son_droid_1.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_2.wav",
+     "fichier": "son_droid_2.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_3.wav",
+     "fichier": "son_droid_3.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_4.wav",
+     "fichier": "son_droid_4.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_5.wav",
+     "fichier": "son_droid_5.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_6.wav",
+     "fichier": "son_droid_6.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_7.wav",
+     "fichier": "son_droid_7.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_8.wav",
+     "fichier": "son_droid_8.wav",
      "frequence": 9035
     },
     {
-     "fichier": "son_adv0_9.wav",
+     "fichier": "son_droid_9.wav",
      "frequence": 7680
     }
    ],
@@ -616,409 +1933,12 @@
      }
     ]
    ]
-  },
-  {
-   "sprites": "sprites_adv1.json",
-   "nombre_sprites": 11,
-   "sons": [
-    {
-     "fichier": "son_adv1_0.wav",
-     "frequence": 12047
-    },
-    {
-     "fichier": "son_adv1_1.wav",
-     "frequence": 12047
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 60,
-      "frequence": 10240
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv2.json",
-   "nombre_sprites": 8,
-   "sons": [
-    {
-     "fichier": "son_adv2_0.wav",
-     "frequence": 9752
-    },
-    {
-     "fichier": "son_adv2_1.wav",
-     "frequence": 9170
-    },
-    {
-     "fichier": "son_adv2_2.wav",
-     "frequence": 9170
-    },
-    {
-     "fichier": "son_adv2_3.wav",
-     "frequence": 10240
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 63,
-      "frequence": 9752
-     },
-     {
-      "echantillon": 1,
-      "tadr": 67,
-      "frequence": 9170
-     },
-     {
-      "echantillon": 0,
-      "tadr": 63,
-      "frequence": 9752
-     },
-     {
-      "echantillon": 1,
-      "tadr": 67,
-      "frequence": 9170
-     },
-     {
-      "echantillon": 2,
-      "tadr": 67,
-      "frequence": 9170
-     }
-    ],
-    [
-     {
-      "echantillon": 3,
-      "tadr": 60,
-      "frequence": 10240
-     }
-    ],
-    [
-     {
-      "echantillon": 4,
-      "tadr": 68,
-      "frequence": 9035
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv3.json",
-   "nombre_sprites": 18,
-   "sons": [
-    {
-     "fichier": "son_adv3_0.wav",
-     "frequence": 10593
-    },
-    {
-     "fichier": "son_adv3_1.wav",
-     "frequence": 9170
-    },
-    {
-     "fichier": "son_adv3_2.wav",
-     "frequence": 12047
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 58,
-      "frequence": 10593
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 67,
-      "frequence": 9170
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 3,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv4.json",
-   "nombre_sprites": 25,
-   "sons": [
-    {
-     "fichier": "son_adv4_0.wav",
-     "frequence": 10778
-    },
-    {
-     "fichier": "son_adv4_1.wav",
-     "frequence": 7144
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 57,
-      "frequence": 10778
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 86,
-      "frequence": 7144
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 57,
-      "frequence": 10778
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv5.json",
-   "nombre_sprites": 26,
-   "sons": [
-    {
-     "fichier": "son_adv5_0.wav",
-     "frequence": 9909
-    },
-    {
-     "fichier": "son_adv5_1.wav",
-     "frequence": 10593
-    },
-    {
-     "fichier": "son_adv5_2.wav",
-     "frequence": 10778
-    },
-    {
-     "fichier": "son_adv5_3.wav",
-     "frequence": 12047
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 62,
-      "frequence": 9909
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 58,
-      "frequence": 10593
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 57,
-      "frequence": 10778
-     }
-    ],
-    [
-     {
-      "echantillon": 3,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 4,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv6.json",
-   "nombre_sprites": 14,
-   "sons": [
-    {
-     "fichier": "son_adv6_0.wav",
-     "frequence": 12047
-    },
-    {
-     "fichier": "son_adv6_1.wav",
-     "frequence": 12047
-    },
-    {
-     "fichier": "son_adv6_2.wav",
-     "frequence": 10778
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 57,
-      "frequence": 10778
-     }
-    ],
-    [
-     {
-      "echantillon": 3,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv7.json",
-   "nombre_sprites": 18,
-   "sons": [
-    {
-     "fichier": "son_adv7_0.wav",
-     "frequence": 12047
-    },
-    {
-     "fichier": "son_adv7_1.wav",
-     "frequence": 12288
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 50,
-      "frequence": 12288
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 51,
-      "frequence": 12047
-     }
-    ]
-   ]
-  },
-  {
-   "sprites": "sprites_adv8.json",
-   "nombre_sprites": 9,
-   "sons": [
-    {
-     "fichier": "son_adv8_0.wav",
-     "frequence": 10593
-    },
-    {
-     "fichier": "son_adv8_1.wav",
-     "frequence": 12538
-    },
-    {
-     "fichier": "son_adv8_2.wav",
-     "frequence": 9170
-    }
-   ],
-   "sequences": [
-    [
-     {
-      "echantillon": 0,
-      "tadr": 58,
-      "frequence": 10593
-     }
-    ],
-    [
-     {
-      "echantillon": 1,
-      "tadr": 49,
-      "frequence": 12538
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 67,
-      "frequence": 9170
-     }
-    ],
-    [
-     {
-      "echantillon": 3,
-      "tadr": 60,
-      "frequence": 10240
-     }
-    ],
-    [
-     {
-      "echantillon": 2,
-      "tadr": 63,
-      "frequence": 9752
-     },
-     {
-      "echantillon": 3,
-      "tadr": 70,
-      "frequence": 8777
-     },
-     {
-      "echantillon": 6,
-      "tadr": 68,
-      "frequence": 9035
-     },
-     {
-      "echantillon": 7,
-      "tadr": 68,
-      "frequence": 9035
-     }
-    ]
-   ]
   }
  ],
+ "memoire_scripts": {
+  "debut": 100352,
+  "octets": "AAIAAAAA/////QAAAAAAAAAA//8AAQAA7Ur////9AAAAAAAAAAD//wAIAAAAAP//AAIAAQAAAAD//wADAAEAAO3g//8ABAABAAAAAP//AAUAAQAAAAD/////AAoAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wABAA8AAO2+/////wAKAAAAAP////0AAAAAAAAAAAAAAAAAAYgmAAGIJgABiGwAAYhsAA0AAAA4AC8AEP/wAB8AHwAQ//AAHwAfABD/8AAfAB8AEP/wAB8AHwAQ/+4AGwAdABD/7gAbAB0AEP/uABsAHQAQ/+4AGwAdABD/7gAaAB3//wABAADuCv//AAIAAQAAAAD//wADAAEAAAAA//8ABAABAAAAAP//AAMAAQAAAAD//wACAAEAAAAA/////QAAAAAAAAAAAAIAAQAAAAD//wADAAEAAAAA//8ABAABAAAAAP//AAMAAQAAAAD//wACAAEAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wABAAIAARda/////wACAAAAAP//AAEAAgAAAAD/////AAIAAAAA//8AAQACAAAAAP////8ADgAAAAD////9AAAAAAAAAAD//wAIAAAAAP//AAEAEgAAAAD////9AAAAAAAAAAD//wAIAAAAAP//AAUABQABFwL//wAGAAMAAAAA//8ABwADAAAAAP//AAYAAwAAAAD/////AAoAAAAA/////QAAAAAAAAAAAAGJPgABiXoAAYnKAAGJ6AABiegACgAAAD4AEwAAAAAAPgATAAAAAAA+ABMAAAAAAD4AEwAAAAAAPgATAAAAAAA+ABMAAAAAAD4AEwAAAAAAPgAT//8AAQAA7ir//wAGAAQAAAAA//8ABwAEAAAAAP//AAYABAAAAAD////9AAAAAAAAAAD//wABAADuSv////0AAAAAAAAAAP//AAYAAAAA//8ADgACAAAAAP//AA8AAQAAAAD//wAQAAEAAAAA//8AEQABAAAAAP//ABAAAQAAAAD//wAPAAEAAAAA//8AEAABAAAAAP//ABEAAQAAAAD//wAQAAEAAAAA//8ADwABAAAAAP//AA4AAQAAAAD////9AAAAAAAAAAAACQAIAAAAAP//AAoAAgAAAAD//wALAAEAAAAA//8ADAABAAAAAP//AAsAAQABF4r//wAKAAEAAAAA//8ACwABAAAAAP//AAwAAQAAAAD//wALAAEAAAAA//8ACgABAAAAAP//AAkAAQAAAAD/////AAoAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wABAAUAAAAA//8AAgAFAAAAAP//AAMAAgABF3L//wACAAIAAAAA//8AAQACAAAAAP////0AAAAAAAAAAAAJAAgAAAAA//8ACgACAAEXov//AAsAAQAAAAD//wAMAAEAAAAA//8ACwABAAAAAP//AAoAAQAAAAD//wALAAEAAAAA//8ADAABAAAAAP//AAsAAQAAAAD//wAKAAEAAAAA//8ACQABAAAAAP////8ACgAAAAD////9AAAAAAAAAAAAAAAAAAGLSgABi8wAAYrIAAGMEgACAAAAUQA+ABf/7AAnACEAF//sACcAIQAX/+wAJwAhABf/7AAnACEAG//gACEAFQAb/+AAIQAVABv/4AAhABUAG//gACEAFQAb/+AAIQAVABv/4AAhABUAFf/rAC0AJQAV/+sALQAlABX/6wAtACUAAAAAAFEAPgAAAAAAUQA+AAAAAABRAD4AAAAAAFEAPgAHAAEAAO6+/////QAAAAAAAAAA//8AAQAA7t7//wADAAEAAAAA//8ABAABAAAAAP//AAMAAQAAAAD////9AAAAAAAAAAD//wABAADu3v//AAUAAQAAAAD//wAGAAEAAAAA//8ABQABAAAAAP////0AAAAAAAAAAAAAAAEAAAAA/////gAAAADvMP////0AAAAAAAAAAP//AAgAAAAA//8AEQABAAAAAP//ABIAAQAAAAD//wATAAEAAAAA//8AFAABAAAAAP//ABUAAQAAAAD//wAWAAEAAAAA//8AFwABAAAAAP//ABgABQAAAAD//wAXAAEAAAAA//8AFgABAAAAAP//ABUABAAAAAD//wAWAAEAAAAA//8AFwABAAAAAP//ABgABQAAAAD//wAXAAEAAAAA//8AFgABAAAAAP//ABUAAQAAAAD//wAAAAEAAAAAAAL//gAAAADv5v////8AAQABF9L/////ABQAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wAFAAMAAAAA//8ABgADAAAAAP//AAUAAwAAAAD//wABAAMAAAAA//8AAgADAAEXuv//AAEAAwAAAAD////9AAAAAAAAAAD//wAIAAAAAP//ABEAAQAAAAD//wASAAEAAAAA//8AEwABAAAAAP//ABQAAQAAAAD//wAVAAEAAAAA//8AFgABAAAAAP//ABcAAQAAAAD//wAYAAgAAAAA//8AFwABAAAAAP//ABYAAQAAAAD//wAVAAEAAAAA//8AFAABAAAAAP//ABMAAQAAAAD//wASAAEAAAAA//8AEQABAAAAAP////0AAAAAAAAAAAAAAAAAAY3OAAGOtAABjwQAAY3OAAEAAABdAEIAAAAAAF0AQgAL/+0ANgAvAAv/1gA2ABgAC//WADYAGAAL/9YANgAYAAv/1gA2ABgASP/fABMADwBI/98AEwAPAEj/3wATAA8ASP/fABMADwBI/98AEwAPAEj/3wATAA0ASP/fABMADQBI/98AEwAPAEj/3wATAA4ASP/fABMADQAAAAAAXwBCAAAAAABfAEIAAAABAF8AQwAAAAEAXwBDAAAAAQBfAEMAAAABAF8AQwAAAAEAXwBDAAAAAQBfAEMAAAAA//8AAQAA8J7//wAYAAQAAAAA//8AGQAEAAAAAP//ABgABAAAAAD////9AAAAAAAAAAD//wABAADwvv////0AAAAAAAAAAP//AAgAAAAA//8AEAADAAEYKP//ABEAAwAAAAD//wASAAEAAAAA//8AEQACAAAAAP//ABIABAAAAAD//wARAAEAAAAA//8AEAABAAAAAP////8ACgAAAAD////9AAAAAAAAAAD//wAIAAAAAP//AA4ABQAAAAD//wAPAAUAAAAA//8AEAAFAAEX+P//AA8ABQAAAAD//wAOAAUAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wACAAEAAAAA//8AAwABAAAAAP//AAQAAQABGBD//wAFAAEAAAAA//8ABgABAAEYEP//AAcAAQABGBD//wAIAAEAAAAA//8ACQABAAAAAP////0AAAAAAAAAAP//AAgAAAAA//8AEwABAAEYQP//ABQAAQAAAAD//wATAAEAAAAA//8AFAABAAAAAP//ABUAAQAAAAD//wAUAAIAAAAA//8AEwABAAAAAP////8AAwAAAAD//wACAAQAAAAA/////wAKAAAAAP////0AAAAAAAAAAAAAAAAAAZDUAAGROAABkX4AAZHi//sAAABcAD4AAAAAAFwAPgAZ/+8AKQAtABn/7wApAC0AFv/vACwALQAV/+8ALQAtABb/7wAsADEAGf/vACkAMQAV//AAMgA1ABf/7wAtAC0AGf/vACsALQAZ/+8AKQAtABn/7wApAC0AGf/vACkALQAY/+8AKgAtABn/7wApAC0AGf/vACkALQAZ/+8AKQAtABn/8gApADAAGf/yACkAMAAZ/+8AKQAtABn/8QApAC8AGf/vACkALQAZ/+8AKQAtABn/7wApAC0AGf/vACkALf//AAgAAAAA//8AAQABAAAAAP//AAIAAQAAAAD//wADAAEAAAAA//8ABAABAAAAAP//AAUAAQAAAAD//wAGAAEAAAAA//8ABwABAAEYiP//AAgAAQAAAAD//wAJAAEAAAAA//8ACgAGAAAAAP//AAkAAQAAAAD//wAIAAEAAAAA//8ABwABAAAAAP//AAYAAQAAAAD//wAFAAEAAAAA//8ABAABAAAAAP//AAMAAQAAAAD//wACAAEAAAAA//8AAQABAAAAAP////8AAQAAAAD/////AAoAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wABAAEAAAAA//8AAgABAAAAAP//AAMAAQAAAAD//wAEAAEAAAAA//8ABQACAAAAAP//AAsAAQAAAAD//wAMAAEAAAAA//8ADQABAAAAAP//AA0AAgABGHD//wAMAAIAAAAA//8ADQACAAAAAP//AAwAAQAAAAD//wALAAMAAAAA//8ABQABAAAAAP//AAQAAQAAAAD//wADAAEAAAAA//8AAgABAAAAAP//AAEAAQAAAAD/////AAEAAAAA/////wAKAAAAAP////0AAAAAAAAAAAAAAAAAAZM+AAGTPgABlCQAAZQkAAEAAABUAEAAAAAAAFQAIwAAAAAAVAAjAAAAAABUACMAAAAAAFQAIwAAAAAAVAAjAAAAAABUACMAAAAAAFQAIwAAAAAAVAAgAAAAAABUACAAAAAAAFQAIAAAAAAAVAAgAAAAAABUACAAAAAAAFQAIAAAAAAAVAAg//8AAQAA8TIAAAABAAQAAAAA//8AAgAEAAAAAP//AAEABAAAAAD////9AAAAAAAAAAD//wADAAAAAP//AAsAAwAAAAD//wAMAAMAAAAA//8ADAADAAAAAAACAAwAAwAA8VIAA//9AAAAAAAAAAD//wAIAAAAAP//AAsAAwAAAAAAAwAMAAMAAAAAAAoADQA/AAAAAP//AAwACgAAAAAACgALAAoAAAAA/////wAKAAAAAP////0AAAAAAAAAAP//AAgAAAAA//8ACgAFAAAAAAADAAQABQAAAAAACgAFAAUAAAAAAAoABAAFAAAAAAAKAAEABQAAAAAACv/9AAAAAAAAAAD//wAIAAAAAP//AAsAAwAAAAAAAwAMAAMAAAAAAAoADQADAAAAAP//ABAAAwAAAAAADwAQADwAAAAAAA4AEQAKAAAAAAAMAAsACgAAAAD/////AAoAAAAA/////QAAAAAAAAAAAAAAAAABlfoAAAAAAAGWSgABlpAACgAAADwAQQAM/9wAJwAdAAz/3AAnAB0ADP/cACcAHQAM/9wAJwAdAAz/3AAnAB0ADP/cACcAHQAM/9wAJwAdAAz/3AAnAB0ADP/cACcAHQAM/9wAJwAd//MAAABJACP/8wAAAEkAI//zAAAAUAAj//IAAABVACP/8gAAAFUAI//dAAEAkAAO/9gAAQCgAA///wAIAAAAAP//AAYABAABGKD//wACAAYAAAAA/////wAKAAAAAP////0AAAAAAAAAAP//AAgAAAAA//8AAwAFAAAAAP//AAQADwABGND//wADABQAAAAA/////QAAAAAAAAAA//8ACAAAAAD//wAGAAIAAAAA//8ABwACAAEYuP//AAgAAgAAAAD//wAHAAIAAAAA//8ACAACAAAAAP//AAcAAgAAAAD//wAIAAIAAAAA//8ABwACAAAAAP//AAgAAgAAAAD//wAHAAIAAAAA//8ABgACAAAAAP//AAUACgAAAAD////9AAAAAAAAAAD//wAIAAAAAP//AAYABAABGOj/////AAoAAAAA/////QAAAAAAAAAAAAAAAAABl5gAAZfKAAGX/AABmIgAAgAAAFEAQQAX/+YAJQAeABf/5gAlAB4AF//mACUAHgAX/+YAJQAeABf/5gAlAB4AF//mACUAHgAX/+YAJQAeABf/5gAlAB4AAQACAAAAAP//AAIAAgAAAAD//wADAAIAAAAA//8AAgACAAAAAP////0AAAAAAAAAAP//AAgAAAAA//8AAwACAAEWUv//AAEAAgAAAAD//wACAAIAAAAA/////wAKAAAAAP////0AAAAAAAAAAP//AAgAAAAA//8AAQACAAEWqv//AAMAAgAAAAD//wACAAIAAAAA/////wAKAAAAAP////0AAAAAAAAAAP//AAQAAAAAAAMABAAEAAEWOgADAAUABAAAAAAAAwAGABQAAAAAAAP//QAAAAAAAAAAAAAAAAABmT4AAZk+AAGZegABmXoACQAAAEAAQAAP/+QAIgAkAA//5AAiACQAD//kACIAJAAAAAAAQABAAAAAAABAAEAAAAAAAEAAQAABAQICAwMEBAUFBgMICAcICQkKAwoKIyMLCw0NDA0ODg8PEBARERIPExMUFBUAAAECAhcXFhYBAAAYGRkaGhsbGAAAAgMDGBgXFwIAAAMKCh0dHBwbGwMcMwAACiMjIiMLCyYmHh4kHh0dCgAACw0NKyspKSEhKCgqKCcnJScmJgsAACssLC0tICAhISkpKwAADQ4OLCwrKw0AAA4PDy4uLS0sLA4AAB8gIC0tLi4fAAAfLi4PDxMTMDAvAAAvMDAxMS8AADEwMBMTMjIxAAAAAZo0AAAAAAAAAAAAAAABmmT/zgAAAAAAAAAAAAGabv/YAAAAAAAAAAAAAZp4/9j/9gAAAAAAAAABmoL/4v/sAAAAAAAAAAGakP/s/9gAAAAAAAAAAZqiAAD/zgAAAAAAAAABmrgACv/YAAAAAAAAAAGaxgAK/84AAAAAAAAAAZrQABT/2AAAAAAAAAABmtwAFP/iAAAAAAAAAAGa5gAe/+wAAAAAAAAAAZryACgAAAAAAAAAAAABmvoAMgAAAAAAAAAA/5H/+v+j//P/p//n/8r/zf+f/8n/k/+5/5j/s//B/6P/xP+z/8v/u//f/73/+/+wADb/pQA5/7MAQP/YAFb/4ABp/9AAav+5AHT/rgBn/+8AqP/3AKz//f/b//P/3v/u/+P/5v/W//r/7//5//D/9P/0//P/9//x//n/8AAQ//kADf/1AAT/7v/2/8j/8/+v//n/6gAE/9b//v/xAAP/8QAD//IAF//mAB3/1QAm/9QAN//dADL/4AA4/+YAG//7AFr/8gBT//sAbf/8/+7/5///AAEAAPI2/////gAAAADyiP////8AAQAA8/7////9AAAAAAAAAAD//wABAADyNv////4AAAAA8zb/////AAEAAPP+/////QAAAAAAAAAAAGQAAAAAABkABQAAAAAAlgAAAAAAZAAy"
+ },
  "table_adversaires": [
   {
    "nom": "Skip",

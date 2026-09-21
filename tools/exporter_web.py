@@ -142,9 +142,32 @@ def main():
         print('  sprites %-12s %d sprites, %dx%d' % (nom, len(rects), w, h))
 
     # --- les neuf adversaires -------------------------------------------
-    for k, f in enumerate(sorted(glob.glob(os.path.join(TRAVAIL, 'assets', 'tc0', '*.bin')))):
+    # L'ordre est celui de l'index d'adversaire ($1B5AC), et le fichier est
+    # celui que 0x00D786 charge pour cet index. Chaque .TC0 a ete identifie
+    # en comparant les hauteurs de ses sprites a la table de placement que
+    # 0x00D786 associe au meme index (8 correspondances completes sur 9 ;
+    # bejin 6/18, seul fichier restant).
+    ram = open(os.path.join(TRAVAIL, 'dump', 'loaded.ram'), 'rb').read()
+    for vieux in glob.glob(os.path.join(SORTIE, '*adv[0-9]*')):
+        os.remove(vieux)
+    PERSOS = [  # (fichier charge, .TC0 sur la disquette 2, table de placement)
+        ('skip', 'disk2_011c00', 0x188A8), ('visine', 'disk2_014600', 0x18A42),
+        ('vinnie', 'disk2_019000', 0x18CA8), ('lexan', 'disk2_022a00', 0x18FC2),
+        ('nerual', 'disk2_03d600', 0x19514), ('general', 'disk2_02ae00', 0x1926E),
+        ('bejin', 'disk2_048600', 0x19708), ('biff', 'disk2_050c00', 0x198C4),
+        ('droid', 'disk2_008200', 0x199FC),
+    ]
+    # Les scripts d'animation que 0x00F522 lance en debut de partie, par
+    # index : (adresse, mode). Mode 1 = fond en boucle, 0 = une fois derriere.
+    SCRIPTS = [
+        [(0x18812, 1)], [(0x188F8, 1)],
+        [(0x18AB4, 1), (0x18A82, 1), (0x18AC8, 0)],
+        [(0x18D38, 1), (0x18D4C, 1), (0x18DB0, 0)],
+        [(0x190C0, 1), (0x1908E, 1)], [], [(0x1958C, 1)], [], [(0x1990C, 1)],
+    ]
+    for k, (nom, disque, table) in enumerate(PERSOS):
+        f = os.path.join(TRAVAIL, 'assets', 'tc0', disque + '.bin')
         d = open(f, 'rb').read()
-        nom = 'adv%d' % k
         sp = sprites_tc0(d)
         img, rects = planche(sp, colonnes=6)
         chemin = os.path.join(SORTIE, 'sprites_%s.png' % nom)
@@ -171,7 +194,12 @@ def main():
             nf = 'son_%s_%d.wav' % (nom, j)
             wav(os.path.join(SORTIE, nf), ech, hz)
             sons.append({'fichier': nf, 'frequence': hz})
+        mot = lambda o: struct.unpack_from('>h', ram, o)[0]
         manifeste['adversaires'].append({
+            'fichier': nom, 'tc0': disque,
+            'placement': [[mot(table + 8 * i + j) for j in (0, 2, 4, 6)]
+                          for i in range(len(rects))],
+            'scripts': [{'adresse': a, 'mode': mode} for a, mode in SCRIPTS[k]],
             'sprites': 'sprites_%s.json' % nom,
             'nombre_sprites': len(rects),
             'sons': sons,
@@ -180,6 +208,17 @@ def main():
                            for e, t in s] for s in sequences],
         })
         print('  advers. %-12s %d sprites, %d son(s)' % (nom, len(rects), len(sons)))
+
+    # La zone memoire des scripts d'animation, telle quelle. Les scripts se
+    # REECRIVENT : les fonctions de rappel du personnage modifient le numero
+    # de sprite ou la duree d'une image directement dans ces octets. On les
+    # exporte donc comme une memoire, pas comme une liste figee.
+    import base64
+    DEBUT, FIN = 0x18800, 0x19D00
+    manifeste['memoire_scripts'] = {
+        'debut': DEBUT,
+        'octets': base64.b64encode(ram[DEBUT:FIN]).decode('ascii'),
+    }
 
     # --- les deux banques sonores ----------------------------------------
     for f in sorted(glob.glob(os.path.join(TRAVAIL, 'assets', 'ech', '*.ech'))):

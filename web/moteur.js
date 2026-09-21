@@ -120,6 +120,8 @@ export class Moteur {
     }
     this.A = this.table[index];
     this.A.x = 0; this.A.y = 1350;
+    this.A.raquetteVisible = 1;               // +$1C, pose par $0106DC
+    this.evenements = [];
     this.ivresses = 0;
   }
 
@@ -139,6 +141,7 @@ export class Moteur {
   // =========================================================================
   image(sourisDx, sourisDy, bouton) {
     this.sons = [];
+    this.evenements = [];                      // pour les animations
     this.joueur(sourisDx, sourisDy, bouton);   // $FD38 -> $FB7A
     this.ia();                                 // $10EAA
     this.palet();                              // $1034C
@@ -185,6 +188,10 @@ export class Moteur {
         P.y += borner(-60, 1205 - P.y, 60);
         if (P.x === 0 && P.y === 1205) {
           this.paletAuService();
+          if (this.idx === DC3) {               // $010438 : Dc3 prend la pose
+            this.evenements.push({ ecrire: [0x199D4, 6] });
+            this.evenements.push({ lancer: 0x199B6, mode: 0 });
+          }
           this.etatAdv = ETAT_ADV.SERVICE;
         }
         break;
@@ -444,9 +451,9 @@ export class Moteur {
       this.bejinB4 = this.rand() & 1;
       this.etatAdv = ETAT_ADV.RECENTRE;
       this.son(2, this.bejinB4);
-      // RECONSTRUCTION : l'original lance une animation ($195BE) dont la fin
-      // fait passer le jeu a l'etat 6. On y passe directement.
-      this.etatJeu = ETAT_JEU.LANCER_BEJIN;
+      // Son animation de service ($195BE, mode 0) appelle $F152 a sa derniere
+      // image, et c'est cela qui passe le jeu a l'etat 6.
+      this.evenements.push({ lancer: 0x195BE, mode: 0 });
       return;
     }
     this.etatAdv = ETAT_ADV.FRAPPE_SERVICE;
@@ -469,6 +476,7 @@ export class Moteur {
     const A = this.A;
     if (this.sim.x === this.xAv && this.sim.y === this.yAv) {
       this.xN = this.cibleX; this.yN = this.cibleY;
+      if (this.idx === DC3) this.evenements.push({ ecrire: [0x199D4, 4] });
       this.etatAdv = ETAT_ADV.RECENTRE;
       return;
     }

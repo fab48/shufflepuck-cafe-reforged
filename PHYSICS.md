@@ -1365,3 +1365,111 @@ vitre adverse    : echelle = (dy + 150) / 8,  centre (projX(palet), 67)
 
 `src/ia.c` et `src/shufflepuck.c` portent encore les versions précédentes
 de la détection et de l'IA : **`web/moteur.js` fait désormais foi.**
+
+---
+
+# L'affichage — raquettes, palet, personnages, tri
+
+## Les sprites sont posés par le bas
+
+`$174C8` calcule `haut = y − hauteur + 1` : le `y` qu'on lui passe est la
+**ligne du bas** du sprite. Le prototype les posait par le haut, un sprite
+trop bas — d'où un palet qui semblait plus proche qu'il n'était et
+« traversait » la raquette. Le bit 7 de l'octet de largeur est un drapeau
+(`& $7F`).
+
+## Les raquettes sont de la 3D
+
+`0x00DC58` : une **plaque verticale de 81 unités**, projetée par ses coins
+`(x − demi, hauteur 81)` et `(x + demi, hauteur 0)`, puis tracée en
+primitives — contour blanc (15), arête supérieure grise (14) épaissie à deux
+ou trois lignes si `Y < 400`, contour intérieur (11), fond (12). La raquette
+adverse n'est dessinée que si `+$1C` est posé : **Lexan pose sa raquette pour
+boire** (`0xEFE6` l'efface, `0xEF30` la remet).
+
+## Le palet
+
+`0x00DE2C` choisit le sprite par **douze seuils de profondeur**
+(3, 44, 92, 148, 213, 292, 389, 510, 665, 872, 1161), avec un décalage
+vertical par tranche (`$1841C` : 6 5 4 4 3 2 2 1 1 1 0 0), posé par le bas en
+`projY(6, y)`.
+
+## L'ordre d'affichage (`0x00F860`)
+
+1. le décor de la partie (`0x00D5B0`) : l'image `jeu`, une bande noire
+   `y ≤ 67`, le **corps** du personnage posé le pied à 67 ;
+2. découpe à `y < 68`, puis la liste de fond (`$1AF6E`, scripts en boucle)
+   et les animations « derrière » (`$1AF28`, drapeau 0) — dont la **vitre du
+   fond** ;
+3. découpe levée : les deux **montants du fond de table** (sprites 15 et 16
+   de `sprites`, en (90, 67) et (204, 67)) ;
+4. raquettes et palet par ordre de profondeur (`0x00DF00`) ;
+5. les animations « devant » (drapeau 1) — dont la **vitre du joueur**.
+
+La vitre n'a pas de routine d'affichage propre : c'est un script
+(`$19C98` / `$19CC0`) qui appelle les routines d'éclats. `0x00F480` le lance
+en **mode 2 (devant)** pour la vitre du joueur et en **mode 0 (derrière)**
+pour celle de l'adversaire.
+
+## Les personnages
+
+### Quel fichier pour quel adversaire
+
+`0x00D786` choisit, par index d'adversaire, le fichier chargé et la table de
+placement. L'index 1 (Vinnie) charge `visine` et l'index 2 (Visine) charge
+`vinnie` — la même inversion 1↔2 que dans la table des noms. Les neuf `.TC0`
+de la disquette 2, anonymes, ont été identifiés en comparant la **hauteur**
+de leurs sprites à `+6` de chaque table de placement :
+
+| index | nom | fichier | `.TC0` | concordance |
+|---|---|---|---|---|
+| 0 | Skip | `skip` | secteur 142 | 10/11 |
+| 1 | Vinnie | `visine` | secteur 163 | 8/8 |
+| 2 | Visine | `vinnie` | secteur 200 | 18/18 |
+| 3 | Lexan | `lexan` | secteur 277 | 25/25 |
+| 4 | Nerual | `nerual` | secteur 491 | 14/14 |
+| 5 | Eneg | `general` | secteur 343 | 26/26 |
+| 6 | Bejin | `bejin` | secteur 579 | 6/18 * |
+| 7 | Biff | `biff` | secteur 646 | 9/9 |
+| 8 | Dc3 | `droid` | secteur 65 | 7/7 |
+
+\* seul fichier restant ; toutes ses largeurs sont compatibles.
+
+### Le placement (`0x00F690`)
+
+Une entrée de 8 octets par sprite : `x, y, largeur visible, hauteur`. Le
+sprite 0 (le corps) est posé en `(x + 117, y + 67)`, les autres
+**relativement au corps**. Avant de poser un sprite, son rectangle est effacé
+en noir : les sprites d'animation sont des pièces opaques qui remplacent une
+partie du corps.
+
+### Les scripts d'animation, qui se réécrivent
+
+`0x00F522` lance en début de partie les scripts du personnage. Une image de
+script fait 10 octets : sprite A, durée, fonction de rappel, sprite B. La
+durée est multipliée par 2/3. Sprite `−2` : appeler la fonction tant qu'elle
+répond 1 ; `−3` : fin, puis boucle (mode 1) ou disparition.
+
+Les fonctions de rappel **écrivent dans le script lui-même** :
+
+- `0xED4A` (Skip), `0xEE4A` (Visine), `0xF0BE` : le personnage **suit le palet
+  des yeux** — pendant la poursuite et la frappe, un sprite différent selon
+  que le palet est à gauche (X < −83), au centre ou à droite ; une autre pose
+  dans les autres états ;
+- `0xEE0A`, `0xEE2A`, `0xF09E`, `0xF132` : une durée d'attente tirée entre 30
+  et 150 — **les clignements irréguliers** ;
+- `0xEEDE` (Lexan) : choisit au hasard entre deux boucles d'attente ;
+- `0xEF30` / `0xEFE6` (Lexan) : font varier le `y` de son corps dans sa table
+  de placement — **il se redresse ou s'affaisse derrière la table**, grâce à la
+  découpe à 68 ;
+- `0xF152` : passe le jeu à l'état 6. C'est la dernière image du script de
+  service de Bejin (`$195BE`) : **c'est son animation qui lance le palet**.
+
+### Une contradiction dans le code d'origine
+
+`0x00F522` lance pour l'index 4 (Nerual) les scripts `$190C0` et `$1908E`.
+Le second utilise les sprites 24 et 25, alors que le fichier `nerual` n'en a
+que 14. Par leur place en mémoire — juste avant la table de `general`, comme
+chaque personnage a ses scripts juste avant sa table — ces scripts semblent
+être ceux d'Eneg, qui n'en reçoit aucun. Je ne tranche pas : le prototype
+suit le code et ignore les numéros de sprite hors de la banque.

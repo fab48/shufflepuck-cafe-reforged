@@ -85,6 +85,7 @@
 
 <script type="module">
 import { Moteur, ETAT_ADV, ETAT_JEU } from './moteur.js';
+import { Animations } from './animation.js';
 
 const ecran = document.getElementById('ecran');
 const ctx = ecran.getContext('2d');
@@ -101,15 +102,20 @@ const palette = m.ecrans.terrain.palette;
 const interfaceJson = await (await fetch(A + 'sprites_interface.json')).json();
 const interfaceImg = await charger(A + interfaceJson.image);
 
-// Les sprites 3 a 13 de la banque « interface » sont le palet mis a l'echelle
-// en perspective, du plus grand (32x25, proche) au plus petit (16x4, loin).
-const PALET_PREMIER = 3, PALET_NOMBRE = 11;
-
+// Les banques des personnages, dans l'ordre de l'index d'adversaire : le
+// fichier est celui que 0x00D786 charge pour cet index.
 const advImg = [], advJson = [];
-for (let k = 0; k < m.adversaires.length; k++) {
-  const j = await (await fetch(A + `sprites_adv${k}.json`)).json();
+for (const a of m.adversaires) {
+  const j = await (await fetch(A + a.sprites)).json();
   advJson.push(j);
   advImg.push(await charger(A + j.image));
+}
+
+// $174C8 : le y passe a la routine est la ligne du BAS du sprite.
+function sprite(img, json, k, x, bas) {
+  const s = json.sprites[k];
+  if (!s) return;
+  ctx.drawImage(img, s.x, s.y, s.w, s.h, x, bas - s.h + 1, s.w, s.h);
 }
 
 // --- audio ----------------------------------------------------------------
@@ -131,9 +137,7 @@ function banque(n) {
     return { sequences: b.sequences,
              fichier: (e) => b.echantillons.find(x => x.fichier.endsWith(`_${e}.wav`)) };
   }
-  // RECONSTRUCTION : la correspondance entre les neuf .TC0 et les neuf
-  // adversaires n'est pas etablie. On prend le .TC0 de meme rang.
-  const a = m.adversaires[moteur.idx % m.adversaires.length];
+  const a = m.adversaires[moteur.idx];
   return { sequences: a.sequences,
            fichier: (e) => a.sons.find(x => x.fichier.endsWith(`_${e}.wav`)) };
 }
@@ -160,6 +164,9 @@ async function jouerSequence(n, s) {
 
 // --- moteur ---------------------------------------------------------------
 const moteur = new Moteur(m);
+const anim = new Animations(m, moteur);
+function partie(idx) { moteur.nouvellePartie(idx); anim.demarrer(idx); }
+partie(0);
 
 const choix = document.getElementById('choix');
 m.table_adversaires.forEach((a, i) => {
@@ -168,8 +175,8 @@ m.table_adversaires.forEach((a, i) => {
   choix.appendChild(o);
 });
 choix.value = 0;
-choix.onchange = () => moteur.nouvellePartie(+choix.value);
-document.getElementById('rejouer').onclick = () => moteur.nouvellePartie(+choix.value);
+choix.onchange = () => partie(+choix.value);
+document.getElementById('rejouer').onclick = () => partie(+choix.value);
 
 // --- souris ---------------------------------------------------------------
 // Le bouton n'engage pas le service : on sert en FRAPPANT le palet. Maintenu,
@@ -242,10 +249,9 @@ function paletDessin() {
   const p = moteur.P;
   let t = SEUILS_PALET.findIndex((s) => p.y < s);
   if (t < 0) t = 11;
-  const sp = interfaceJson.sprites[t + 3];
-  const x = moteur.projeterX(p.x, p.y) + t - 15;
-  const y = moteur.projeterY(6, p.y) + DECALAGE_PALET[t];
-  ctx.drawImage(interfaceImg, sp.x, sp.y, sp.w, sp.h, x, y, sp.w, sp.h);
+  sprite(interfaceImg, interfaceJson, t + 3,
+         moteur.projeterX(p.x, p.y) + t - 15,
+         moteur.projeterY(6, p.y) + DECALAGE_PALET[t]);
 }
 
 // $00F164 : chaque eclat est un polygone trace en lignes, a une echelle qui
@@ -271,26 +277,59 @@ function traceVitre(v) {
   ctx.stroke();
 }
 
-function dessiner() {
-  ctx.drawImage(fond, 0, 0);
+// $1811E : lignes de decoupe [haut, bas[.
+function decoupe(bas) {
+  ctx.restore(); ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, 320, bas); ctx.clip();
+}
 
-  const ja = advJson[moteur.idx % advJson.length];
-  const s0 = ja.sprites[0];
-  ctx.drawImage(advImg[moteur.idx % advImg.length], s0.x, s0.y, s0.w, s0.h,
-                160 - (s0.w >> 1), sol(1500) - s0.h + 6, s0.w, s0.h);
+// Un sprite du personnage, place par $00F690 : on efface d'abord son
+// rectangle en noir (la couleur 0), puis on le pose par le bas.
+function spritePerso(k) {
+  if (k < 0) return;
+  const j = advJson[moteur.idx];
+  if (k >= j.sprites.length) return;   // voir PHYSICS.md : scripts de l'index 4
+  const [x, bas, eff] = anim.placer(k);
+  if (eff) pave(eff[0], eff[1], eff[2], eff[3], 0);
+  sprite(advImg[moteur.idx], j, k, x, bas);
+}
+
+// Une image de jeu complete, dans l'ordre de $00D5B0 puis $00F860.
+function dessiner() {
+  ctx.save();
+  // $00D5B0 : le decor de la partie.
+  ctx.drawImage(fond, 0, 0);
+  pave(0, 0, 319, 67, 0);                                  // bande noire du fond
+  const j = advJson[moteur.idx];
+  const [x0] = anim.placer(0);
+  sprite(advImg[moteur.idx], j, 0, x0, 67);                // le corps, pied a 67
+
+  // $00F860 : les calques du personnage, decoupes au bord de la table.
+  decoupe(68);
+  for (const s of anim.fond) anim.jouer(s, spritePerso);
+  anim.av = anim.av.filter((s) => s.devant || anim.jouer(s, spritePerso));
+  if (moteur.vitre && !moteur.vitre.pres) {                // vitre du fond : derriere
+    decoupe(67); traceVitre(moteur.vitre); decoupe(68);
+  }
+  decoupe(200);
+  sprite(interfaceImg, interfaceJson, 15, 90, 67);         // les deux montants
+  sprite(interfaceImg, interfaceJson, 16, 204, 67);        // du fond de table
 
   // $00DF00 : l'ordre du peintre. Le palet est dessine juste avant la
   // premiere raquette qui se trouve devant lui.
   const A = moteur.A, J = moteur.J, P = moteur.P;
   let fait = false;
   if (P.y >= A.y) { paletDessin(); fait = true; }
-  raquette3D(A.x, A.y, A.largeur >> 1);
+  if (A.raquetteVisible) raquette3D(A.x, A.y, A.largeur >> 1);
   if (!fait && P.y > 750) { paletDessin(); fait = true; }
   if (!fait && P.y > J.y) { paletDessin(); fait = true; }
   raquette3D(J.x, J.y, J.largeur >> 1);
   if (!fait) paletDessin();
 
-  if (moteur.vitre) traceVitre(moteur.vitre);
+  // Les animations « devant », puis la vitre du joueur : par-dessus tout.
+  anim.av = anim.av.filter((s) => !s.devant || anim.jouer(s, spritePerso));
+  if (moteur.vitre && moteur.vitre.pres) traceVitre(moteur.vitre);
+  ctx.restore();
 }
 
 const nomAdv = Object.fromEntries(Object.entries(ETAT_ADV).map(([k, v]) => [v, k.toLowerCase()]));
@@ -320,13 +359,19 @@ function boucle(maintenant) {
   dette += maintenant - precedent;
   precedent = maintenant;
   if (dette > 200) dette = 200;
+  // Une image de jeu = physique, puis rendu : les animations des personnages
+  // avancent dans le rendu ($00F860), a la meme cadence que la physique.
   while (dette >= PERIODE) {
     dette -= PERIODE;
     moteur.image(dx, dy, bouton);
+    for (const e of moteur.evenements) {
+      if (e.ecrire) anim.mem.ecrire(e.ecrire[0], e.ecrire[1]);
+      if (e.lancer) anim.lancer(e.lancer, e.mode);
+    }
     for (const s of moteur.sons) jouerSequence(s.banque, s.sequence);
     dx = 0; dy = 0;
+    dessiner();
   }
-  dessiner();
   ecrireInfos();
   requestAnimationFrame(boucle);
 }
