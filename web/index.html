@@ -190,6 +190,7 @@ const CONSIGNES = {
   presents: '',
   titre: 'Chargement du café…',
   disquette: 'Cliquez pour insérer la disquette 2.',
+  inseree: 'Disquette 2 insérée.',
   lecture: 'Lecture de la disquette…',
   rideau: '',
   bar: 'Choisissez votre adversaire : cliquez sur un client du bar. ' +
@@ -272,8 +273,8 @@ function coord(e) {
 let dx = 0, dy = 0, bouton = false;
 ecran.addEventListener('mousedown', (e) => {
   initAudio();
-  if (ecranCourant === 'disquette') { allerA('lecture'); bruitDisquette(); return; }
-  if (['presents', 'titre', 'lecture', 'rideau'].includes(ecranCourant)) return;
+  if (ecranCourant === 'disquette') { allerA('inseree'); return; }
+  if (['presents', 'titre', 'inseree', 'lecture', 'rideau'].includes(ecranCourant)) return;
   if (ecranCourant === 'bar') {
     const [x, y] = coord(e);
     const idx = bar.clic(x, y);
@@ -537,6 +538,11 @@ function imageEcran() {
     ctx.drawImage(imgTitre, 0, 0);
     menu.cadre(ctx, 40, 100, 240, 20);
     menu.texte(ctx, m.menu.disquettes[1], 50, 108, 15);
+  } else if (ecranCourant === 'inseree') {
+    // Le message disparait ; la musique va au bout de sa sequence, puis le
+    // lecteur lit la disquette.
+    ctx.drawImage(imgTitre, 0, 0);
+    if (!audio || audio.currentTime >= musiqueFin) { allerA('lecture'); bruitDisquette(); }
   } else if (ecranCourant === 'lecture') {
     ctx.drawImage(imgTitre, 0, 0);
     if (performance.now() - debutEcran >= DUREE_LECTURE) { allerA('rideau'); pasRideau = 0; }

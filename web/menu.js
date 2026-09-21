@@ -38,13 +38,20 @@ export class Menu {
   }
 
   // --- les primitives du ST ------------------------------------------------
-  // $174C8 : sprite pose par le BAS. Le numero passe au sprite des coins de
-  // droite porte le bit 15 ($8012, $8013, $8015), mais $174C8 double deux fois
-  // le numero sur un mot : le bit est perdu, et c'est le meme sprite qui est
-  // pose. On fait de meme.
+  // $174C8 : sprite pose par le BAS. Bit 15 du numero : le sprite est
+  // retourne horizontalement ($175F0 le retourne en memoire, sur toute sa
+  // largeur en mots de 16 px), le x restant le bord gauche. C'est ainsi que
+  // sont faits les coins et le bord droits du cadre ($8012, $8013, $8015).
   sprite(g, k, x, bas) {
-    const s = this.json.sprites[k & 0x3FFF];
-    g.drawImage(this.img, s.x, s.y, s.w, s.h, x, bas - s.h + 1, s.w, s.h);
+    const s = this.json.sprites[k & 0x7FFF];
+    if (k & 0x8000) {
+      g.save();
+      g.translate(x + s.w, 0); g.scale(-1, 1);
+      g.drawImage(this.img, s.x, s.y, s.w, s.h, 0, bas - s.h + 1, s.w, s.h);
+      g.restore();
+    } else {
+      g.drawImage(this.img, s.x, s.y, s.w, s.h, x, bas - s.h + 1, s.w, s.h);
+    }
   }
   // $17E78 : pave plein, bornes comprises.
   pave(g, x1, y1, x2, y2, c) {

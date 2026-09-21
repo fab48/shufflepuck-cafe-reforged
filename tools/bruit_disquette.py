@@ -4,6 +4,8 @@
 Source : « reading floppy disc 2 » (freesound_community, 35303), un
 enregistrement de lecteur. On en garde le debut, coupe dans le creux
 silencieux vers 3,1 s, avec un fondu de 60 ms pour eviter le clic.
+L'enregistrement est tres faible (crete a 9 % de la pleine echelle) : il
+est normalise a 90 %.
 
     python -m pip install miniaudio
     python tools/bruit_disquette.py chemin/vers/le.mp3
@@ -17,6 +19,8 @@ n, f = int(COUPE * TAUX), int(FONDU * TAUX)
 s = list(d.samples[:n + f])
 for i in range(f):
     s[n + i] = int(s[n + i] * (1 - i / f))
+g = 0.9 * 32767 / max(abs(v) for v in s)
+s = [int(v * g) for v in s]
 sortie = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                       'web', 'assets', 'bruit_disquette.wav')
 with wave.open(sortie, 'wb') as w:

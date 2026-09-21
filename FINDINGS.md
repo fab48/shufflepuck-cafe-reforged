@@ -368,11 +368,15 @@ partie » : les réglages tiennent d'une partie à l'autre. Après SET-IT, le
 code recopie certains réglages sur leurs jumeaux (`$12584`, `$125BC`,
 `$12610`) ; `$1262E` recopie `$1B644` sur lui-même, une coquille gardée.
 
-Deux détails lus et gardés : les coins droits du cadre sont demandés en
-miroir (bit 15 du numéro de sprite), mais `$174C8` double deux fois le
-numéro sur un mot et perd ce bit — ce sont les coins gauches qui sont
-posés ; et « charge tournoi », faute de `tourname.dat`, enchaîne sur
-« nouvel adversaire » (`$122DA`).
+Un détail lu et gardé : « charge tournoi », faute de `tourname.dat`,
+enchaîne sur « nouvel adversaire » (`$122DA`).
+
+*Erreur corrigée :* j'avais écrit que `$174C8` perdait le bit 15 du numéro
+de sprite (il double le numéro sur un mot pour indexer la table) et que les
+coins droits du cadre sortaient donc non retournés. Mais `$175F0` relit le
+numéro d'origine : bit 15 levé, le sprite est retourné horizontalement en
+mémoire (table de bits inversés `$1AD2E`, drapeau dans l'octet de largeur).
+Le cadre « cassé » à droite venait de là ; Fabien l'a vu à l'image.
 
 L'**obstacle** (`$19CEA` : x, vx, taille, poids, actif) est transcrit avec :
 glissement et rebonds `$10614`, collision `$1023C` (échange des vitesses
