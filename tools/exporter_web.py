@@ -221,7 +221,9 @@ def main():
     # de sprite ou la duree d'une image directement dans ces octets. On les
     # exporte donc comme une memoire, pas comme une liste figee.
     import base64
-    DEBUT, FIN = 0x18800, 0x19D00
+    # $18400 : on inclut la scene du bar (placement $18444, scripts $18574 et
+    # $1879A), qui precede les donnees des personnages.
+    DEBUT, FIN = 0x18400, 0x19D00
     manifeste['memoire_scripts'] = {
         'debut': DEBUT,
         'octets': base64.b64encode(ram[DEBUT:FIN]).decode('ascii'),
@@ -247,7 +249,7 @@ def main():
     rappels = set()
     # Deux scripts lances par le moteur plutot qu'en debut de partie : le
     # service de Bejin ($195BE) et la pose de Dc3 ($199B6).
-    autres = [0x195BE, 0x199B6]
+    autres = [0x195BE, 0x199B6, 0x18574, 0x1879A]   # + la boucle du bar et la bestiole
     for adv in manifeste['adversaires'] + [{'scripts': [{'adresse': a} for a in autres], 'reactions': []}]:
         for s in [x['adresse'] for x in adv['scripts']] + [x for x in adv['reactions'] if x]:
             for im in scripts_de(s):
@@ -276,6 +278,24 @@ def main():
         else:
             ignores.append(f)
     manifeste['rappels_sons'] = {str(f): v for f, v in sons_rappels.items()}
+
+    # La scene du bar (0x01205A) : l'ecran de choix de l'adversaire.
+    #   zones $1A040 : x1, y1, x2, y2, valeur (index d'adversaire ; -1 sortie,
+    #   -2 la bestiole, 9 l'enseigne), terminees par un x1 nul ;
+    #   placement $18444 : x, y du BAS, largeur, hauteur -- en absolu ;
+    #   champion : la chaine a $1A520, que rend $137D0.
+    zones, a = [], 0x1A040
+    while struct.unpack_from('>h', ram, a)[0]:
+        zones.append([struct.unpack_from('>h', ram, a + 2 * i)[0] for i in range(5)])
+        a += 10
+    fin_nom = ram.index(bytes(1), 0x1A520)
+    manifeste['bar'] = {
+        'zones': zones,
+        'placement': 0x18444,
+        'boucle': 0x18574, 'bestiole': 0x1879A,
+        'champion': ram[0x1A520:fin_nom].decode('latin1'),
+        'musique': 2,                       # $11422 : banque 0, sequence 2
+    }
     print('  rappels  %d fonctions de son reconnues ; non reconnues : %s'
           % (len(sons_rappels), ' '.join('%X' % f for f in ignores)))
 

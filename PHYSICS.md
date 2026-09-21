@@ -1549,3 +1549,63 @@ après la liste de fond et après le corps, et la routine de ligne (`$16EBE`)
 écrit ses pixels sans condition. Ils passent donc **devant** le personnage,
 sous les raquettes, coupés au bord de la table. Fabien se souvient de les voir
 passer derrière. À vérifier sur une capture d'un point marqué.
+
+---
+
+# Le bar, l'écran de choix de l'adversaire (`0x01205A`)
+
+L'image que j'appelais « Current Champion » est **`INTBAR`**, l'intérieur du
+bar. Le jeu la charge par `$D0D6` ; elle est sur les deux disquettes, et
+`$D114` la libère avant de charger Eneg, dont le fichier est le plus gros.
+
+## La boucle
+
+- en entrée, le script `$18574` est lancé **en boucle** (mode 1) : une seule
+  séquence de 55 images qui anime les clients **à tour de rôle** ;
+- chaque image : le décor (`$ECD0`), les animations (`$FAA0`, banque
+  `barsprit`, placement **absolu** à `$18444` : x, y du bas, largeur,
+  hauteur), puis le nom du champion en (40, 39) — `$137D0` rend
+  « Biff Raunch » ;
+- la musique (banque 0, séquence 2) est relancée dès qu'elle se termine
+  (`$14EEC` puis `$11422`).
+
+## Les zones cliquables (`$1A040`)
+
+Dix octets par zone : `x1, y1, x2, y2, valeur`.
+
+| zone | cible |
+|---|---|
+| (174,130)–(212,175) | 0 Skip |
+| (201,103)–(232,127) | 1 Visine |
+| (205,54)–(262,93) | 2 Vinnie |
+| (9,91)–(59,199) | 3 Lexan |
+| (60,73)–(141,140) | 4 Eneg |
+| (210,139)–(266,199) | 5 Nerual |
+| (121,39)–(194,87) | 6 Bejin |
+| (245,63)–(312,135) | 7 Biff |
+| (8,45)–(57,97) | 8 Dc3 |
+| (11,4)–(149,45) | 9 l'enseigne |
+| (204,0)–(312,60) | −1 la sortie |
+| (261,128)–(311,199) | −2 **la créature** |
+
+La créature lance le script `$1879A` (sprites 33 à 37) si aucune autre
+animation ne joue ; sa fonction `$113A2` joue le son 3 de la banque 0. Choisir
+Dc3 recopie son bloc dans la copie de travail `$1B60C` — celle que modifie
+l'éditeur de réglages : **Dc3 est le robot d'entraînement paramétrable**.
+
+## Les touches pendant la partie (`$FD38`)
+
+- **Espace** (code `$39`) : `$1B57E = 6`, la boucle de jeu s'interrompt et
+  ouvre le menu (`$1299E`) — nouvelle partie, nouvel adversaire, tournoi,
+  sauvegarde, réglages ;
+- **Échap** (code `$01`) : pause, jusqu'à la touche suivante.
+
+Le menu passe par un petit système de fenêtres (pile `$1B664`, dessin
+`$12CC6` / `$12EF6`, interaction `$1348C`) qui n'est pas encore transcrit ;
+dans le prototype, Espace ramène au bar.
+
+## Les banques sonores (`$112C0`)
+
+Le chiffre de tête d'un numéro de son choisit la banque : **0 la musique**
+(`$1AFD0`), **1 les bruitages** (`$1AFD4`), **2 la voix de l'adversaire
+courant** (`$1B59C`, la partie voix de son `.TC0`).

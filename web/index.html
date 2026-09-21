@@ -2,95 +2,90 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Shufflepuck — moteur</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shufflepuck Café</title>
 <style>
   :root {
     --fond: #101014; --texte: #d8d4cc; --faible: #8a867e;
-    --trait: #2a2a32; --accent: #d89040;
+    --trait: #2a2a32; --accent: #d89040; --bandeau: #18181e;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --fond: #f4f2ee; --texte: #1a1a1e; --faible: #6a665e;
-      --trait: #d8d4cc; --accent: #a05c10;
+      --trait: #d8d4cc; --accent: #a05c10; --bandeau: #ebe8e2;
     }
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 16px; background: var(--fond); color: var(--texte);
     font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
   }
+  .large { width: min(960px, calc(100vw - 32px)); }
   h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
   h1 span { color: var(--faible); font-weight: 400; }
-  #cadre {
-    position: relative; line-height: 0;
-    border: 1px solid var(--trait); background: #000;
+  #bandeau {
+    display: flex; gap: 8px 18px; align-items: center; flex-wrap: wrap;
+    background: var(--bandeau); border: 1px solid var(--trait); border-radius: 6px;
+    padding: 8px 12px; font-size: 12px; min-height: 38px;
   }
+  #bandeau .consigne { flex: 1 1 320px; }
+  #bandeau kbd {
+    font: inherit; border: 1px solid var(--trait); border-bottom-width: 2px;
+    border-radius: 3px; padding: 0 4px; background: var(--fond);
+  }
+  #bandeau .score { color: var(--accent); font-weight: 600; }
+  #cadre { line-height: 0; border: 1px solid var(--trait); background: #000; }
   canvas {
-    display: block; width: min(960px, calc(100vw - 34px)); height: auto;
-    image-rendering: pixelated;
+    display: block; width: 100%; height: auto; image-rendering: pixelated;
+    cursor: pointer;
   }
-  #voile {
-    position: absolute; inset: 0; display: flex; align-items: center;
-    justify-content: center; background: rgba(0,0,0,.72); cursor: pointer;
-    color: #fff; font: 13px/1.6 ui-monospace, monospace; text-align: center;
-    padding: 16px;
+  button {
+    font: inherit; background: transparent; color: var(--texte);
+    border: 1px solid var(--trait); border-radius: 4px; padding: 3px 10px; cursor: pointer;
   }
-  #voile.parti { display: none; }
+  button:hover { border-color: var(--accent); }
   #infos {
-    width: min(960px, calc(100vw - 34px));
     display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 8px 18px; color: var(--faible); font-size: 12px;
+    gap: 6px 18px; color: var(--faible); font-size: 12px;
   }
   #infos b { color: var(--texte); font-weight: 600; }
-  #barre { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-           width: min(960px, calc(100vw - 34px)); font-size: 12px; }
-  select, button {
-    font: inherit; background: transparent; color: var(--texte);
-    border: 1px solid var(--trait); border-radius: 4px; padding: 3px 8px;
-  }
-  button { cursor: pointer; }
-  button:hover, select:hover { border-color: var(--accent); }
-  .note { color: var(--faible); font-size: 12px; max-width: 960px; }
+  .note { color: var(--faible); font-size: 12px; }
 </style>
 </head>
 <body>
 
-<h1>Shufflepuck <span>— moteur retro-ingenierie, decors et sons d'origine</span></h1>
+<h1 class="large">Shufflepuck Café <span>— Atari ST, 1989, rétro-ingénierie</span></h1>
 
-<div id="barre">
-  <label>adversaire
-    <select id="choix"></select>
-  </label>
-  <button id="rejouer">rejouer</button>
-  <span id="score"></span>
+<div id="bandeau" class="large">
+  <span class="consigne" id="consigne">Chargement…</span>
+  <span class="score" id="score"></span>
+  <button id="auBar" hidden>retour au bar</button>
 </div>
 
-<div id="cadre">
+<div id="cadre" class="large">
   <canvas id="ecran" width="320" height="200"></canvas>
-  <div id="voile"><div>cliquer pour prendre la souris
-    <br><small>frappez le palet pour servir &middot; bouton maintenu = coup appuye
-    &middot; Echap = relacher</small></div></div>
 </div>
 
-<div id="infos"></div>
+<div id="infos" class="large" hidden></div>
 
-<p class="note">
-  Le fond, les sprites et les sons viennent des disquettes d'origine. La boucle
-  de jeu, la collision, l'IA, le service, le point, la vitre, les raquettes, les
-  animations des personnages et le robot du tableau sont transcrits du 68000.
-  Manquent encore : les menus, l'ecran de chargement, la fonte d'origine et
-  l'obstacle.
+<p class="note large">
+  Les images, les sons, la physique, l'intelligence des adversaires et leurs
+  animations viennent du jeu d'origine, lus octet par octet sur les disquettes
+  et dans le code 68000. Ajoutez <code>?debug</code> à l'adresse pour voir
+  l'état du moteur.
 </p>
 
 <script type="module">
 import { Moteur, ETAT_ADV, ETAT_JEU } from './moteur.js';
 import { Animations } from './animation.js';
 import { Robot } from './robot.js';
+import { Bar } from './bar.js';
 
 const ecran = document.getElementById('ecran');
 const ctx = ecran.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+const DEBUG = new URLSearchParams(location.search).has('debug');
 
 const charger = (src) => new Promise((ok, ko) => {
   const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src;
@@ -99,9 +94,14 @@ const charger = (src) => new Promise((ok, ko) => {
 const A = 'assets/';
 const m = await (await fetch(A + 'manifeste.json')).json();
 const fond = await charger(A + m.ecrans.terrain.fichier);
+const imgTitre = await charger(A + m.ecrans.titre.fichier);
+const imgPresents = await charger(A + m.ecrans.presents.fichier);
+const imgBar = await charger(A + m.ecrans.champion.fichier);     // INTBAR
 const palette = m.ecrans.terrain.palette;
 const interfaceJson = await (await fetch(A + 'sprites_interface.json')).json();
 const interfaceImg = await charger(A + interfaceJson.image);
+const barJson = await (await fetch(A + 'sprites_bar.json')).json();
+const barImg = await charger(A + barJson.image);
 
 // Les banques des personnages, dans l'ordre de l'index d'adversaire : le
 // fichier est celui que 0x00D786 charge pour cet index.
@@ -120,9 +120,10 @@ function sprite(img, json, k, x, bas) {
 }
 
 // --- audio ----------------------------------------------------------------
-// Une sequence est une suite de paires (echantillon, frequence). On rejoue
-// chaque echantillon a SA frequence de sequence par playbackRate : c'est la
-// transposition que le ST obtenait en changeant le diviseur du Timer A.
+// $112C0 : banque 0 = musique ($1AFD0), 1 = bruitages ($1AFD4), 2 = la voix
+// de l'adversaire courant ($1B59C). Chaque echantillon est rejoue a SA
+// frequence de sequence par playbackRate : la transposition que le ST
+// obtenait en changeant le diviseur du Timer A.
 let audio = null;
 const tampons = new Map();
 async function tampon(fichier) {
@@ -131,22 +132,20 @@ async function tampon(fichier) {
   tampons.set(fichier, b);
   return b;
 }
-// banque 1 = bruitages du jeu ; banque 2 = la voix de l'adversaire courant.
 function banque(n) {
-  if (n === 1) {
-    const b = m.sons.bruitages;
-    return { sequences: b.sequences,
-             fichier: (e) => b.echantillons.find(x => x.fichier.endsWith(`_${e}.wav`)) };
-  }
+  const b = n === 0 ? m.sons.musique : n === 1 ? m.sons.bruitages : null;
+  if (b) return { sequences: b.sequences,
+                  fichier: (e) => b.echantillons.find(x => x.fichier.endsWith(`_${e}.wav`)) };
   const a = m.adversaires[moteur.idx];
   return { sequences: a.sequences,
            fichier: (e) => a.sons.find(x => x.fichier.endsWith(`_${e}.wav`)) };
 }
+// Renvoie l'instant ou la sequence se termine.
 async function jouerSequence(n, s) {
-  if (!audio) return;
+  if (!audio) return 0;
   const b = banque(n);
   const seq = b.sequences[s];
-  if (!seq) return;
+  if (!seq) return 0;
   let t = audio.currentTime;
   for (const { echantillon, frequence } of seq) {
     const f = b.fichier(echantillon);
@@ -161,53 +160,97 @@ async function jouerSequence(n, s) {
     src.start(t);
     t += buf.duration / src.playbackRate.value;
   }
+  return t;
+}
+function viderSons() {
+  for (const s of moteur.sons) jouerSequence(s.banque, s.sequence);
+  moteur.sons = [];
 }
 
-// --- moteur ---------------------------------------------------------------
+// --- les objets du jeu ----------------------------------------------------
 const moteur = new Moteur(m);
 const anim = new Animations(m, moteur);
 const robot = new Robot(m, moteur, interfaceImg, interfaceJson, palette[15], palette[0]);
+const bar = new Bar(m, moteur, imgBar, barImg, barJson, palette);
 // RECONSTRUCTION : a chaque nouvelle partie on repart d'un tableau vierge ;
 // dans l'original, l'eponge efface les points de la partie precedente.
 function partie(idx) { moteur.nouvellePartie(idx); anim.demarrer(idx); robot.reinitialiser(); }
-window.jeu = { moteur, anim, robot, partie };      // pour le debogage, depuis la console
-partie(0);
+window.jeu = { moteur, anim, robot, bar, partie, allerA: (e) => allerA(e) };
 
-const choix = document.getElementById('choix');
-// L'ordre du jeu, et le nom du bloc que $1A01A associe a chaque index.
-m.index_blocs.forEach((bloc, i) => {
-  const o = document.createElement('option');
-  o.value = i; o.textContent = m.table_adversaires[bloc].nom;
-  choix.appendChild(o);
-});
-choix.value = 0;
-choix.onchange = () => partie(+choix.value);
-document.getElementById('rejouer').onclick = () => partie(+choix.value);
+// --- les ecrans : accueil, bar, partie --------------------------------------
+const consigne = document.getElementById('consigne');
+const scoreEl = document.getElementById('score');
+const auBar = document.getElementById('auBar');
+let ecranCourant = null, debutEcran = 0;
+const CONSIGNES = {
+  presents: 'Cliquez pour entrer au Shufflepuck Café.',
+  titre: 'Cliquez pour entrer au Shufflepuck Café.',
+  bar: 'Choisissez votre adversaire : cliquez sur un client du bar. ' +
+       'La créature en bas à droite réagit aussi.',
+  partie: 'Cliquez sur la table pour prendre la souris · frappez le palet pour servir · ' +
+          'bouton maintenu = coup appuyé · <kbd>Espace</kbd> retour au bar · ' +
+          '<kbd>Échap</kbd> lâcher la souris',
+};
+function allerA(e) {
+  ecranCourant = e; debutEcran = performance.now();
+  consigne.innerHTML = CONSIGNES[e];
+  auBar.hidden = e !== 'partie';
+  scoreEl.textContent = '';
+  if (e === 'bar') { bar.entrer(); musiqueFin = 0; }
+  if (e !== 'partie' && document.pointerLockElement) document.exitPointerLock();
+}
+allerA('presents');
+
+function initAudio() {
+  if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+// Coordonnees ecran 320 x 200 d'un evenement souris.
+function coord(e) {
+  const r = ecran.getBoundingClientRect();
+  return [Math.floor((e.clientX - r.left) * 320 / r.width),
+          Math.floor((e.clientY - r.top) * 200 / r.height)];
+}
 
 // --- souris ---------------------------------------------------------------
-// Le bouton n'engage pas le service : on sert en FRAPPANT le palet. Maintenu,
-// il fait passer la raquette au second jeu de coefficients ($19D0E).
+// En partie, le bouton n'engage pas le service : on sert en FRAPPANT le
+// palet. Maintenu, il fait passer la raquette au second jeu de
+// coefficients ($19D0E).
 let dx = 0, dy = 0, bouton = false;
-const voile = document.getElementById('voile');
-voile.onclick = () => {
-  ecran.requestPointerLock();
-  if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
-};
-document.addEventListener('pointerlockchange', () => {
-  voile.classList.toggle('parti', document.pointerLockElement === ecran);
+ecran.addEventListener('mousedown', (e) => {
+  initAudio();
+  if (ecranCourant === 'presents' || ecranCourant === 'titre') { allerA('bar'); return; }
+  if (ecranCourant === 'bar') {
+    const [x, y] = coord(e);
+    const idx = bar.clic(x, y);
+    if (idx !== null) { partie(idx); allerA('partie'); }
+    return;
+  }
+  if (document.pointerLockElement !== ecran) { ecran.requestPointerLock(); return; }
+  bouton = true;
+});
+ecran.addEventListener('mousemove', (e) => {
+  if (ecranCourant === 'bar') {
+    const [x, y] = coord(e);
+    const z = bar.zone(x, y);
+    ecran.style.cursor = (z !== null && z !== 9) ? 'pointer' : 'default';
+  } else if (ecranCourant === 'partie') {
+    ecran.style.cursor = 'crosshair';
+  }
 });
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== ecran) return;
   dx += e.movementX; dy += e.movementY;
 });
-document.addEventListener('mousedown', () => {
-  if (document.pointerLockElement === ecran) bouton = true;
-});
 document.addEventListener('mouseup', () => { bouton = false; });
+// $FD38 : la barre d'espace (code clavier $39) ouvre le menu de l'original.
+// Le menu n'est pas encore transcrit : elle ramene au bar.
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && ecranCourant === 'partie') { e.preventDefault(); allerA('bar'); }
+});
+auBar.onclick = () => allerA('bar');
 
-// --- rendu ----------------------------------------------------------------
-const sol = (y) => moteur.projeterY(0, y);
-
+// --- rendu de la partie -----------------------------------------------------
 // --- primitives du ST : trait horizontal $17252, trait $16EBE, pave $17E78 ---
 function hligne(x1, y, x2, c) {
   ctx.fillStyle = palette[c];
@@ -294,14 +337,14 @@ function decoupe(bas) {
 function spritePerso(k) {
   if (k < 0) return;
   const j = advJson[moteur.idx];
-  if (k >= j.sprites.length) return;   // voir PHYSICS.md : scripts de l'index 4
+  if (k >= j.sprites.length) return;
   const [x, bas, eff] = anim.placer(k);
   if (eff) pave(eff[0], eff[1], eff[2], eff[3], 0);
   sprite(advImg[moteur.idx], j, k, x, bas);
 }
 
 // Une image de jeu complete, dans l'ordre de $00D5B0 puis $00F860.
-function dessiner() {
+function dessinerPartie() {
   ctx.save();
   // $00D5B0 : le decor de la partie.
   ctx.drawImage(fond, 0, 0);
@@ -342,10 +385,14 @@ function dessiner() {
   ctx.restore();
 }
 
+const infos = document.getElementById('infos');
+infos.hidden = !DEBUG;
 const nomAdv = Object.fromEntries(Object.entries(ETAT_ADV).map(([k, v]) => [v, k.toLowerCase()]));
 const nomJeu = Object.fromEntries(Object.entries(ETAT_JEU).map(([k, v]) => [v, k.toLowerCase()]));
-const infos = document.getElementById('infos');
 function ecrireInfos() {
+  if (ecranCourant !== 'partie') return;
+  scoreEl.textContent = `${moteur.A.nom} ${moteur.s0} — ${moteur.s1} vous`;
+  if (!DEBUG) return;
   const a = moteur.A, p = moteur.P;
   infos.innerHTML = [
     ['jeu', nomJeu[moteur.etatJeu]],
@@ -357,46 +404,68 @@ function ecrireInfos() {
     ['tremblement', a.tremblement],
     ['ivresses', moteur.ivresses],
   ].map(([k, v]) => `<div>${k} <b>${v}</b></div>`).join('');
-  document.getElementById('score').textContent =
-    `${moteur.A.nom} ${moteur.s0} — ${moteur.s1} vous`;
 }
 
+// --- la boucle --------------------------------------------------------------
 // La cadence d'origine, MESUREE : l'echange d'ecran ($15AEA, trap 5) attend
 // une VBL, et la boucle ne tient pas en une seule. Sur 20 s de partie
 // enregistrees a chaque VBL dans Hatari, l'ecran change une VBL sur deux dans
-// l'immense majorite des cas : 25 images par seconde, avec des images a
-// 3 VBL (16,7/s) quand le dessin est plus lourd. On garde 25.
+// l'immense majorite des cas : 25 images par seconde.
 const VBL = 20;                       // ms, 50 Hz
 // Apres un point, le dessin des eclats de vitre est si couteux que le jeu
 // d'origine tombe a 7 ou 8 VBL par image, puis reaccelere a mesure qu'ils
 // sortent de l'ecran ; la reaction du personnage se joue pendant ce ralenti.
 // MESURE, pas modele : duree en VBL de chaque image apres le point, relevee
-// sur les deux points de la capture Hatari (moyenne, les images coupees en
-// 1 + 4 VBL comptees comme une seule image de 5). Vitre du joueur seulement :
-// la vitre du fond, plus petite, n'a pas ete mesuree.
+// sur les deux points de la capture Hatari. Vitre du joueur seulement.
 const CADENCE_POINT = [7, 7, 7, 8, 7, 5, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5,
                        5, 5, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3];
 let cadence = [];
 let periode = 2 * VBL;
-let dette = 0, precedent = performance.now();
-function boucle(maintenant) {
-  dette += maintenant - precedent;
-  precedent = maintenant;
-  if (dette > 400) dette = 400;
-  // Une image de jeu = physique, puis rendu : les animations des personnages
-  // avancent dans le rendu ($00F860), a la meme cadence que la physique.
-  while (dette >= periode) {
-    dette -= periode;
+let musiqueFin = 0;
+
+// RECONSTRUCTION : l'enchainement des ecrans d'amorcage (« Broderbund
+// presents », puis le titre) est celui de l'original, mais leurs durees ne
+// sont pas mesurees.
+const DUREE_PRESENTS = 3000;
+
+function imageEcran() {
+  if (ecranCourant === 'presents') {
+    ctx.drawImage(imgPresents, 0, 0);
+    if (performance.now() - debutEcran > DUREE_PRESENTS) allerA('titre');
+  } else if (ecranCourant === 'titre') {
+    ctx.drawImage(imgTitre, 0, 0);
+  } else if (ecranCourant === 'bar') {
+    bar.image(ctx);
+    viderSons();
+    // $14EEC puis $11422 : la musique est relancee des qu'elle se termine.
+    if (audio && audio.currentTime >= musiqueFin) {
+      musiqueFin = Infinity;
+      jouerSequence(0, m.bar.musique).then((t) => { musiqueFin = t; });
+    }
+  } else {
     moteur.image(dx, dy, bouton);
     for (const e of moteur.evenements) {
       if (e.ecrire) anim.mem.ecrire(e.ecrire[0], e.ecrire[1]);
       if (e.lancer) anim.lancer(e.lancer, e.mode);
       if (e.reaction !== undefined) { anim.reagir(e.reaction); cadence = CADENCE_POINT.slice(); }
     }
-    periode = (cadence.length ? cadence.shift() : 2) * VBL;
     dx = 0; dy = 0;
-    dessiner();                      // les scripts d'animation jouent des voix
-    for (const s of moteur.sons) jouerSequence(s.banque, s.sequence);
+    dessinerPartie();                // les scripts d'animation jouent des voix
+    viderSons();
+    return (cadence.length ? cadence.shift() : 2) * VBL;
+  }
+  // RECONSTRUCTION : la cadence du bar n'est pas mesuree ; 25 images/s.
+  return 2 * VBL;
+}
+
+let dette = 0, precedent = performance.now();
+function boucle(maintenant) {
+  dette += maintenant - precedent;
+  precedent = maintenant;
+  if (dette > 400) dette = 400;
+  while (dette >= periode) {
+    dette -= periode;
+    periode = imageEcran();
   }
   ecrireInfos();
   requestAnimationFrame(boucle);

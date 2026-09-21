@@ -4,8 +4,8 @@
 Le resultat, dist/shufflepuck.html, s'ouvre d'un double-clic : pas de
 serveur, pas de Python, pas de Node. Tout y est integre :
 
-  - les trois modules (moteur.js, animation.js, robot.js), mis bout a bout
-    dans le script de la page, leurs import/export retires ;
+  - les modules JavaScript, chacun dans sa propre portee, dans l'ordre de
+    leurs dependances ; un module ne voit que ce qu'il importe ;
   - chaque fichier de web/assets, encode en donnees (data:...).
 
 Un navigateur refuse de charger des modules ou de faire des fetch() depuis
@@ -25,25 +25,23 @@ WEB = os.path.join(RACINE, 'web')
 SORTIE = os.path.join(RACINE, 'dist', 'shufflepuck.html')
 
 TYPES = {'.png': 'image/png', '.json': 'application/json', '.wav': 'audio/wav'}
+IMPORT = re.compile(r"^import \{([^}]*)\} from '\./([\w.]+)';\s*$", re.M)
 
 
-def module(nom, importes):
-    """Un module dans sa propre portee ; seuls les noms que la page importe
-    en sortent.
+def imports(texte):
+    """[(fichier, [noms])] des imports d'un texte."""
+    return [(f, [n.strip() for n in noms.split(',') if n.strip()])
+            for noms, f in IMPORT.findall(texte)]
 
-    Mis bout a bout sans cela, deux modules qui declarent le meme nom (w16
-    existe dans moteur.js et dans la page) se heurtent.
-    """
-    texte = open(os.path.join(WEB, nom), encoding='utf-8').read()
-    texte = re.sub(r'^import .*?;\s*$', '', texte, flags=re.M)
-    exportes = re.findall(r'^export (?:class|function|const|let) (\w+)', texte, flags=re.M)
-    texte = re.sub(r'^export ', '', texte, flags=re.M)
-    manquants = set(importes) - set(exportes)
-    if manquants:
-        raise SystemExit('%s n\'exporte pas %s' % (nom, ', '.join(manquants)))
-    noms = ', '.join(importes)
-    return ('// ===== %s =====\nconst { %s } = (() => {\n%s\nreturn { %s };\n})();'
-            % (nom, noms, texte, ', '.join(exportes)))
+
+def variable(fichier):
+    return '__module_' + re.sub(r'\W', '_', fichier)
+
+
+def lier(imps):
+    """Les imports d'un module, relies aux modules deja evalues."""
+    return '\n'.join('const { %s } = %s;' % (', '.join(noms), variable(f))
+                     for f, noms in imps)
 
 
 def main():
@@ -51,13 +49,33 @@ def main():
     debut = page.index('<script type="module">') + len('<script type="module">')
     fin = page.index('</script>', debut)
     script = page[debut:fin]
-    # Ce que la page importe de chaque module.
-    importes = {f: [n.strip() for n in noms.split(',')]
-                for noms, f in re.findall(r"^import \{([^}]*)\} from '\./([\w.]+)';",
-                                          script, flags=re.M)}
-    script = re.sub(r'^import .*?;\s*$', '', script, flags=re.M)
 
-    # Le chargement des images passe par les donnees integrees.
+    # Les modules, dans l'ordre de leurs dependances.
+    ordre, vus = [], set()
+    def visiter(f):
+        if f in vus:
+            return
+        vus.add(f)
+        texte = open(os.path.join(WEB, f), encoding='utf-8').read()
+        for dep, _ in imports(texte):
+            visiter(dep)
+        ordre.append(f)
+    for f, _ in imports(script):
+        visiter(f)
+
+    morceaux = []
+    for f in ordre:
+        texte = open(os.path.join(WEB, f), encoding='utf-8').read()
+        imps = imports(texte)
+        texte = IMPORT.sub('', texte)
+        exportes = re.findall(r'^export (?:class|function|const|let) (\w+)', texte, re.M)
+        texte = re.sub(r'^export ', '', texte, flags=re.M)
+        morceaux.append('// ===== %s =====\nconst %s = (() => {\n%s\n%s\nreturn { %s };\n})();'
+                        % (f, variable(f), lier(imps), texte, ', '.join(exportes)))
+
+    # La page : ses imports, puis son code.
+    imps_page = imports(script)
+    script = IMPORT.sub('', script)
     ancien = 'i.src = src;'
     if ancien not in script:
         raise SystemExit("motif de chargement d'image introuvable dans index.html")
@@ -82,13 +100,13 @@ def main():
         '};\n'
     ) % json.dumps(donnees)
 
-    corps = '\n'.join([prelude] + [module(f, noms) for f, noms in importes.items()]
-                      + ['// ===== page =====', script])
+    corps = '\n'.join([prelude] + morceaux + ['// ===== page =====', lier(imps_page), script])
     html = page[:debut] + '\n' + corps + '\n' + page[fin:]
     os.makedirs(os.path.dirname(SORTIE), exist_ok=True)
     open(SORTIE, 'w', encoding='utf-8').write(html)
-    print('  %s : %d Ko, %d fichiers integres'
-          % (os.path.relpath(SORTIE, RACINE), len(html.encode('utf-8')) // 1024, len(donnees)))
+    print('  %s : %d Ko, %d modules, %d fichiers integres'
+          % (os.path.relpath(SORTIE, RACINE), len(html.encode('utf-8')) // 1024,
+             len(ordre), len(donnees)))
 
 
 if __name__ == '__main__':
