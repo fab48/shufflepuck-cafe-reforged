@@ -53,6 +53,22 @@ export class Moteur {
     this.m = m;
     this.graine = 12345;                 // $1AFB4
     this.sons = [];                      // sons declenches pendant l'image
+    // La table des neuf blocs, creee UNE fois : les blocs statiques vivent
+    // toute la session. Quand Nerual copie la frappe du joueur, il modifie
+    // SON bloc, durablement.
+    this.table = m.table_adversaires.map((b) => Object.assign({}, b,
+      { x: 0, y: 1500, vx: 0, vy: 0, frappe: 1 }));
+    this.lexanSobre = Object.assign({}, this.table[LEXAN]);
+    // $19CF4, le bloc court du joueur. Le menu « palette » le modifie ; rien
+    // ne le remet a zero, sinon « palette de tournoi ».
+    const g = m.joueur;
+    this.J = {
+      x: 0, y: 0, vx: 0, vy: 0, largeur: g.largeur, frappe: 0,
+      reflex_x: g.reflex_x, reflex_y: g.reflex_y, accel_x: g.accel_x, accel_y: g.accel_y,
+      reflex_x2: g.reflex_x2, reflex_y2: g.reflex_y2, accel_x2: g.accel_x2, accel_y2: g.accel_y2,
+    };
+    // $19CEA : l'obstacle (x, vx, taille, poids, actif).
+    this.O = Object.assign({}, m.obstacle.initial);
     this.nouvellePartie(0);
   }
 
@@ -79,23 +95,30 @@ export class Moteur {
   // --- $00FE9E : a * b / c, en 16 bits ---------------------------------------
   muldiv(a, b, c) { return w16(div(a * b, c)); }
 
+  // --- $0121F2 : un adversaire choisi au bar ----------------------------------
+  // Choisir Dc3 recopie son bloc d'origine ($19FC4) sur sa copie de travail
+  // ($1B60C) : ses reglages repartent de zero. Puis la partie commence.
   nouvellePartie(index) {
-    const m = this.m;
-    // La table des neuf blocs. Les blocs statiques sont partages : quand
-    // Nerual copie la frappe du joueur, il modifie SON bloc, durablement.
-    this.table = m.table_adversaires.map((b) => Object.assign({}, b,
-      { x: 0, y: 1500, vx: 0, vy: 0, frappe: 1 }));
-    this.lexanSobre = Object.assign({}, this.table[LEXAN]);
-    const g = m.joueur;
-    this.J = {                          // $19CF4, bloc court du joueur
-      x: 0, y: g.y, vx: 0, vy: 0, largeur: g.largeur, frappe: 0,
-      reflex_x: g.reflex_x, reflex_y: g.reflex_y, accel_x: g.accel_x, accel_y: g.accel_y,
-      reflex_x2: g.reflex_x2, reflex_y2: g.reflex_y2, accel_x2: g.accel_x2, accel_y2: g.accel_y2,
-    };
+    if (index === DC3) {
+      this.table[this.m.index_blocs[DC3]] = Object.assign({}, this.m.table_adversaires[DC3],
+        { x: 0, y: 1500, vx: 0, vy: 0, frappe: 1 });
+    }
+    this.idx = index;
+    this.recommencer();
+  }
+
+  // Le robot du menu, la copie de travail de Dc3 ($1B60C).
+  get dc3() { return this.table[this.m.index_blocs[DC3]]; }
+
+  // --- $00DA3E : une partie, a 0-0, contre l'adversaire courant ---------------
+  // C'est aussi « nouvelle partie » dans le menu : les reglages restent.
+  recommencer() {
+    const index = this.idx;
+    this.J.x = 0; this.J.y = 0;         // $FB56
     this.D = 100;                       // $19CE8, le diviseur des coefficients
     this.P = { x: 0, y: 0, dx: 0, dy: 0 };   // $1B58C..$1B592
     this.s0 = 0; this.s1 = 0;           // $1B588 (adversaire), $1B58A (joueur)
-    this.serveur = 1;                   // $1B584  RECONSTRUCTION : valeur initiale
+    this.serveur = 1;                   // $1B584, pose a 1 par $DA3E
     this.fin = 0;                       // $1B586
     this.nerualCopie = 0;               // $1B59A
     this.bejinB2 = 0; this.bejinB4 = 0; // $1B5B2, $1B5B4
@@ -106,6 +129,7 @@ export class Moteur {
     this.cibleX = 0; this.cibleY = 0;
     this.xAv = 0; this.yAv = 0; this.xN = 0; this.yN = 0;
     this.vitre = null;
+    this.O.x = 0; this.O.vx = 0;        // $D950, dans $D786
     this.choisirAdversaire(index);
     this.paletAuService();              // $FEB0
     this.etatJeu = this.serveur ? ETAT_JEU.RETOUR_JOUEUR : ETAT_JEU.RETOUR_ADV;
@@ -149,6 +173,7 @@ export class Moteur {
     this.sons = [];
     this.evenements = [];                      // pour les animations
     this.joueur(sourisDx, sourisDy, bouton);   // $FD38 -> $FB7A
+    this.obstacle();                           // $10614
     this.ia();                                 // $10EAA
     this.palet();                              // $1034C
     this.vitreAnime();                         // $F288 / $F336
@@ -229,10 +254,54 @@ export class Moteur {
     }
     this.collisionJoueur();     // $10096
     this.collisionAdversaire(); // $101D0
-    // $1023C : l'obstacle, desactive ($19CF2 = 0) — non transcrit
+    this.collisionObstacle();   // $1023C
     // Le palet ne SORT jamais : il est borne, et c'est $D4D4 qui constate
     // qu'il touche un fond.
     P.y = borner(-18, P.y, 1500);
+  }
+
+  // --- $010614 : l'obstacle glisse de gauche a droite -------------------------
+  // Il rebondit sur les bords de la table, a 250 moins sa demi-taille. Le
+  // bruit de ce rebond, $11514, est une routine vide.
+  obstacle() {
+    const O = this.O, lim = 250 - (O.taille >> 1);
+    O.x = w16(O.x + O.vx);
+    if (O.x < -lim) { O.vx = -O.vx; O.x = w16(-2 * lim - O.x); }
+    if (lim < O.x) { O.vx = -O.vx; O.x = w16(2 * lim - O.x); }
+  }
+
+  // --- $01023C : le palet contre l'obstacle ------------------------------------
+  // L'obstacle est une plaque en travers de la table, a Y = 750. Le palet la
+  // franchit-il pendant l'image ? Si oui, et s'il passe a moins de
+  // taille / 2 + 24 de son centre, il rebondit : sa vitesse laterale et celle
+  // de l'obstacle s'echangent, a travers son poids.
+  collisionObstacle() {
+    const P = this.P, O = this.O;
+    if (!O.actif) return;
+    const d = w16(P.y - (P.dy > 0 ? 722 : 778));
+    if (((w16(d - P.dy) ^ d) >> 15 & 1) === 0) return;
+    if (Math.abs(P.x - O.x) >= (O.taille >> 1) + 24) return;
+    this.son(1, 0x1A);                                   // $114E4
+    if (P.dx === 0 && O.vx === 0) {
+      const r = this.alea(-20, 20);
+      P.dx = w16(-r);
+      O.vx = w16(div(r, O.poids));
+    } else {
+      const t = w16(O.vx * O.poids);                     // MULU : les 16 bits bas
+      O.vx = w16(div(P.dx, O.poids));
+      P.dx = t;
+    }
+    P.y = w16(P.y - d);
+    P.dy = w16(-P.dy);
+  }
+
+  // --- $00DA7A : la partie reprend apres le menu --------------------------------
+  // La raquette revient au centre ($FB56) et, sauf en fin de partie, le palet
+  // retourne au serveur.
+  reprendre() {
+    this.J.x = 0; this.J.y = 0;
+    if (this.etatJeu !== ETAT_JEU.FIN)
+      this.etatJeu = this.serveur ? ETAT_JEU.RETOUR_JOUEUR : ETAT_JEU.RETOUR_ADV;
   }
 
   // $11486 : la sequence de rebond, selon la profondeur.
