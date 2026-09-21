@@ -78,7 +78,7 @@ src/          le moteur en C lisible
 web/          le prototype navigateur
 tools/        les outils d'analyse et d'extraction
 run/          la configuration Hatari, pour jouer à l'original
-work/         les données dérivées du jeu (non versionné)
+work/         les données dérivées du jeu (seul work/assets/ est versionné)
 ```
 
 Lancer le prototype :
@@ -87,13 +87,16 @@ Lancer le prototype :
 python -m http.server 8731 --directory D:/projets/shufflepuck/web
 ```
 
-## Rien du jeu n'est versionné
+## Ce qui est versionné
 
-`work/` et `web/assets/` sont exclus du dépôt. Le code de rétro-ingénierie
-est à nous ; les images, les sons et les données du jeu ne le sont pas. Les
-outils les régénèrent depuis les disquettes de chacun.
+Les assets tirés des disquettes sont versionnés tels quels : `web/assets/`
+(planches de sprites, décors, sons, manifeste) et `work/assets/` (le produit
+brut de l'extraction). Le reste de `work/` — images de disquettes, dumps
+mémoire, captures — reste en local : il se reconstitue depuis ses propres
+disquettes.
 
-Le jeu reste la propriété de ses ayants droit (chaîne Brøderbund → The
-Learning Company → Mattel → Gores → Ubisoft pour le catalogue ludique, 2001 —
-jamais réédité depuis 1989). Usage strictement privé, sur la base d'un
-exemplaire d'origine possédé.
+Le code de rétro-ingénierie est à nous ; les images, les sons et les données
+du jeu ne le sont pas. Le jeu reste la propriété de ses ayants droit (chaîne
+Brøderbund → The Learning Company → Mattel → Gores → Ubisoft pour le
+catalogue ludique, 2001 — jamais réédité depuis 1989). Les assets ont été
+extraits d'un exemplaire d'origine possédé.

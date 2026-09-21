@@ -1175,3 +1175,377 @@ une sonorité YM2149 et la jouer aux 22 hauteurs tabulées ci-dessus — ou synt
 l'équivalent.
 
 La musique de titre numérisée, elle, relève d'un autre mécanisme, non étudié.
+
+---
+
+# La boucle de jeu complète — corrections du 21 septembre 2026
+
+Jusqu'ici les routines étaient transcrites **isolément**. Tout ce qui les
+reliait avait été reconstruit à l'intuition dans le prototype web, et c'est
+précisément ce qui ne se jouait pas comme l'original. Tout ce qui suit a été
+lu dans le code.
+
+## L'ordre d'une image (`0x00DAA4`)
+
+```
+raquette du joueur   $FD38 -> $FB7A
+IA                   $10EAA
+palet                $1034C   repartiteur sur l'etat du jeu $1B594
+score / vitre        $D4D4
+```
+
+## La détection de collision — elle était inventée
+
+**Raquette du joueur (`0x010096`).** On compare les positions de l'image
+*précédente* (position − vitesse) pour savoir de quel côté du palet se trouvait
+la raquette, puis on teste le franchissement **avec une marge de 24** :
+
+```
+cote   = (palet.y - palet.dy) > (joueur.y - joueur.vy)
+touche = cote ? palet.y - 24 < joueur.y  :  palet.y + 24 > joueur.y
+si touche et COLLISION(joueur) :
+    palet.y = joueur.y +/- 24        ; le palet est repose contre la raquette
+    si palet.y > 300 et palet.dy < 5 : palet.dy = 5
+```
+
+**Raquette adverse (`0x0101D0`)** — asymétrique, sans marge :
+
+```
+si (adv.y - adv.vy) > (palet.y - palet.dy) et adv.y <= palet.y et COLLISION(adv) :
+    palet.y = adv.y - 3 ;  palet.dy = min(palet.dy, -5)
+```
+
+**`COLLISION` (`0x00FEEC`) renvoie un booléen**, et son test en X est
+**balayé** : l'intervalle parcouru par le palet pendant l'image, en vitesse
+relative à la raquette, élargi de 24 (le rayon du palet), doit chevaucher la
+raquette. Ma version précédente testait un point fixe sans rayon — d'où les
+palets qui traversaient la raquette du joueur.
+
+## La réponse à la collision — une erreur d'arrondi
+
+Chaque terme passe **séparément** par `0x00FE9E` (`a·b/c` en 16 bits) :
+
+```
+dx = dx*reflex_x/D  +  vx*accel_x/D
+dy = vy*accel_y/D   -  dy*reflex_y/D
+```
+
+et non `(dx*reflex_x + vx*accel_x)/D`. En entiers, ce n'est pas la même chose.
+`D` n'est pas une constante : c'est la variable `$19CE8`, qui vaut 100.
+
+## Le palet ne sort jamais
+
+À la fin de chaque image, `palet.y` est borné à `[-18, 1500]`. C'est `$D4D4`
+qui constate qu'il est à un fond (`y <= 0` : point de l'adversaire,
+`y >= 1500` : point du joueur), passe le jeu à l'état 5 et fait **alterner**
+le service, quel que soit le marqueur.
+
+## Le service — pas de clic
+
+Les états 1 et 2 ramènent le palet au point de service (295 ou 1205) à
+±15 en X et ±60 en Y par image, puis le posent immobile. **On sert en frappant
+le palet.** Le bouton de la souris ne sert pas à servir : maintenu, il fait
+passer la raquette du joueur au second jeu de coefficients (`$19D0E`, posé
+dans `$FB7A`).
+
+## La raquette du joueur
+
+`Y` est borné à **`[0, 300]`**, pas autour de la ligne de service comme je
+l'avais mis.
+
+## L'IA — les états étaient mal numérotés
+
+Répartiteur `0x010F3A` :
+
+| État | Routine | `+$1A` |
+|---|---|---|
+| 0 | anticipation `0x10A02` | 1 |
+| 1 | poursuite `0x10AB6` | 1 |
+| 2 | **frappe** `0x10BCE` | 0 |
+| 3 | **service** `0x10D44` | 1 |
+| 4, 5 | immobile | — |
+| 6 | recentrage `0x1096C` | 1 |
+| 7 | **frappe de service** `0x10C7C` | 0 |
+
+Les routines ne déplacent pas la raquette : elles **proposent** une position
+(`$1AFCC`/`$1AFCE`) à partir de la position avant (`$1AFC8`/`$1AFCA`). Le
+répartiteur ensuite :
+
+1. ajoute un **tremblement** `alea(-t, t)` si la raquette a bougé, dans les
+   états 0, 1, 2, 3 et 7 — `t` est le champ `+$4C`, que je croyais inutilisé :
+   **Skip tremble de 10, Lexan de 5**, les autres pas du tout ;
+2. borne à `X ∈ ±(250 − largeur/2)` et **`Y ∈ [1200, 1500]`** — la seule
+   borne de la raquette adverse ; ma `contraindre()` sur la zone de patrouille
+   était fausse ;
+3. **pose la vitesse égale au déplacement réel** ;
+4. passe en recentrage si le palet s'éloigne.
+
+La vitesse de patrouille est **globale** (`$1AFB8`/`$1AFBA`), pas dans le bloc.
+
+### La frappe adverse est un bond
+
+À l'arrivée de la poursuite, la cible est retenue, et le point simulé devient
+un **point d'armement** décalé de la dispersion (`+$3A`…`+$40`). La raquette
+recule vers ce point ; quand `palet.y + palet.dy >= cible.y`, elle **saute sur
+la cible en une image**. Sa vitesse, égale à son déplacement, devient énorme :
+c'est cela qui transmet la puissance. La « dispersion » est donc le **vecteur
+de frappe** — c'est pourquoi l'éditeur des auteurs la nomme
+« gauche-droite / avant-arrière ».
+
+### La simulation s'arrête à l'entrée de la zone
+
+`0x1078E` fait avancer le palet simulé et **s'arrête dès que `Y > 1200`**.
+Pendant la poursuite, elle continue d'avancer d'un pas par image : la cible
+suit le palet.
+
+### Le service adverse (état 3)
+
+Patrouille, compte à rebours de 30 images, puis cible `(0, 1205)` et point
+d'armement tiré dans `+$42`…`+$48`. **Biff** le module par l'écart au score :
+`k = borner(-10, joueur - adversaire, 10) + 10`, armement `= +$44 · k / 20`.
+**Bejin** tire deux bits ; le son joué dépend de celui qui fixe la direction.
+
+### Nerual copie le joueur
+
+Après un point où le joueur reprend le service, sa **première frappe** est
+recopiée dans le bloc de Nerual (`0x010148`) : coefficients d'accélération,
+et vecteur de service (`+$42`…`+$48` ← vitesse de la raquette du joueur). La
+modification est durable.
+
+### Seul Lexan joue sur une copie
+
+`0x0106DC` : à 0-0, le bloc de Lexan est recopié dans une copie de travail
+(`0x1B5B6`), sur laquelle agit l'ivresse. Les autres adversaires utilisent
+directement la table.
+
+## Le générateur aléatoire (`0x00FD94`)
+
+```
+graine = graine * 0x41C64E6D + (graine >> 20) + 0x3039
+tirage = (graine >> 16) & 0x7FFF
+alea(min, max) = min + reste(tirage / (max - min + 1))
+```
+
+Avec `max < min` le diviseur est négatif et le reste, du signe du dividende,
+reste positif : **Skip et son `alea(34, 30)` tirent dans 34…36**. Ce n'est
+pas une division par −3 comme je l'avais écrit.
+
+## Les sons — une attribution était fausse
+
+| Routine | Séquence | Événement |
+|---|---|---|
+| `$1151C` | `0x100` près, **`0x101` si Y > 750** | **frappe de raquette** — même échantillon, plus grave au fond |
+| `$114E4` | `0x11A` | choc sur l'**obstacle** |
+| `$11586` | `0x102` si \|dy\| > 150, sinon `0x103` | vitre : fracas ou choc sourd |
+| `$115DE` | `0x200` / `0x201` | les deux services de Bejin |
+
+J'avais écrit que `0x11A` était la frappe. `0x0102C2`, qui l'appelle, est dans
+la routine de l'obstacle.
+
+## La vitre
+
+Treize éclats et un cadre de fissure, **tracés en lignes** (`0x00F164`),
+géométrie à `$19B04` / `$19B12` / `$19BC8`. Les éclats suivent toujours la
+même trajectoire (vitesse fixe, gravité +12, pas de 1/8). **C'est l'échelle du
+dessin qui dépend du tir** :
+
+```
+vitre du joueur  : echelle = (150 - dy) / 4,  centre (projX(palet), 200)
+vitre adverse    : echelle = (dy + 150) / 8,  centre (projX(palet), 67)
+```
+
+## Ce qui reste reconstruit dans le prototype
+
+- la valeur initiale de `$1B584` (qui sert en premier) ;
+- le passage à l'état 6 pour le lancer de Bejin, déclenché dans l'original par
+  la fin d'une animation ;
+- la cadence de 50 images par seconde, non mesurée ;
+- l'obstacle, non transcrit ;
+- la correspondance des neuf `.TC0` avec les neuf noms.
+
+`src/ia.c` et `src/shufflepuck.c` portent encore les versions précédentes
+de la détection et de l'IA : **`web/moteur.js` fait désormais foi.**
+
+---
+
+# L'affichage — raquettes, palet, personnages, tri
+
+## Les sprites sont posés par le bas
+
+`$174C8` calcule `haut = y − hauteur + 1` : le `y` qu'on lui passe est la
+**ligne du bas** du sprite. Le prototype les posait par le haut, un sprite
+trop bas — d'où un palet qui semblait plus proche qu'il n'était et
+« traversait » la raquette. Le bit 7 de l'octet de largeur est un drapeau
+(`& $7F`).
+
+## Les raquettes sont de la 3D
+
+`0x00DC58` : une **plaque verticale de 81 unités**, projetée par ses coins
+`(x − demi, hauteur 81)` et `(x + demi, hauteur 0)`, puis tracée en
+primitives — contour blanc (15), arête supérieure grise (14) épaissie à deux
+ou trois lignes si `Y < 400`, contour intérieur (11), fond (12). La raquette
+adverse n'est dessinée que si `+$1C` est posé : **Lexan pose sa raquette pour
+boire** (`0xEFE6` l'efface, `0xEF30` la remet).
+
+## Le palet
+
+`0x00DE2C` choisit le sprite par **douze seuils de profondeur**
+(3, 44, 92, 148, 213, 292, 389, 510, 665, 872, 1161), avec un décalage
+vertical par tranche (`$1841C` : 6 5 4 4 3 2 2 1 1 1 0 0), posé par le bas en
+`projY(6, y)`.
+
+## L'ordre d'affichage (`0x00F860`)
+
+1. le décor de la partie (`0x00D5B0`) : l'image `jeu`, une bande noire
+   `y ≤ 67`, le **corps** du personnage posé le pied à 67 ;
+2. découpe à `y < 68`, puis la liste de fond (`$1AF6E`, scripts en boucle)
+   et les animations « derrière » (`$1AF28`, drapeau 0) — dont la **vitre du
+   fond** ;
+3. découpe levée : les deux **montants du fond de table** (sprites 15 et 16
+   de `sprites`, en (90, 67) et (204, 67)) ;
+4. raquettes et palet par ordre de profondeur (`0x00DF00`) ;
+5. les animations « devant » (drapeau 1) — dont la **vitre du joueur**.
+
+La vitre n'a pas de routine d'affichage propre : c'est un script
+(`$19C98` / `$19CC0`) qui appelle les routines d'éclats. `0x00F480` le lance
+en **mode 2 (devant)** pour la vitre du joueur et en **mode 0 (derrière)**
+pour celle de l'adversaire.
+
+## Les personnages
+
+### Quel fichier pour quel adversaire
+
+`0x00D786` choisit, par index d'adversaire, le fichier chargé et la table de
+placement. L'index 1 (Vinnie) charge `visine` et l'index 2 (Visine) charge
+`vinnie` — la même inversion 1↔2 que dans la table des noms. Les neuf `.TC0`
+de la disquette 2, anonymes, ont été identifiés en comparant la **hauteur**
+de leurs sprites à `+6` de chaque table de placement :
+
+| index | nom | fichier | `.TC0` | concordance |
+|---|---|---|---|---|
+| 0 | Skip | `skip` | secteur 142 | 10/11 |
+| 1 | Vinnie | `visine` | secteur 163 | 8/8 |
+| 2 | Visine | `vinnie` | secteur 200 | 18/18 |
+| 3 | Lexan | `lexan` | secteur 277 | 25/25 |
+| 4 | Nerual | `nerual` | secteur 491 | 14/14 |
+| 5 | Eneg | `general` | secteur 343 | 26/26 |
+| 6 | Bejin | `bejin` | secteur 579 | 6/18 * |
+| 7 | Biff | `biff` | secteur 646 | 9/9 |
+| 8 | Dc3 | `droid` | secteur 65 | 7/7 |
+
+\* seul fichier restant ; toutes ses largeurs sont compatibles.
+
+### Le placement (`0x00F690`)
+
+Une entrée de 8 octets par sprite : `x, y, largeur visible, hauteur`. Le
+sprite 0 (le corps) est posé en `(x + 117, y + 67)`, les autres
+**relativement au corps**. Avant de poser un sprite, son rectangle est effacé
+en noir : les sprites d'animation sont des pièces opaques qui remplacent une
+partie du corps.
+
+### Les scripts d'animation, qui se réécrivent
+
+`0x00F522` lance en début de partie les scripts du personnage. Une image de
+script fait 10 octets : sprite A, durée, fonction de rappel, sprite B. La
+durée est multipliée par 2/3. Sprite `−2` : appeler la fonction tant qu'elle
+répond 1 ; `−3` : fin, puis boucle (mode 1) ou disparition.
+
+Les fonctions de rappel **écrivent dans le script lui-même** :
+
+- `0xED4A` (Skip), `0xEE4A` (Visine), `0xF0BE` : le personnage **suit le palet
+  des yeux** — pendant la poursuite et la frappe, un sprite différent selon
+  que le palet est à gauche (X < −83), au centre ou à droite ; une autre pose
+  dans les autres états ;
+- `0xEE0A`, `0xEE2A`, `0xF09E`, `0xF132` : une durée d'attente tirée entre 30
+  et 150 — **les clignements irréguliers** ;
+- `0xEEDE` (Lexan) : choisit au hasard entre deux boucles d'attente ;
+- `0xEF30` / `0xEFE6` (Lexan) : font varier le `y` de son corps dans sa table
+  de placement — **il se redresse ou s'affaisse derrière la table**, grâce à la
+  découpe à 68 ;
+- `0xF152` : passe le jeu à l'état 6. C'est la dernière image du script de
+  service de Bejin (`$195BE`) : **c'est son animation qui lance le palet**.
+
+### Une contradiction dans le code d'origine
+
+`0x00F522` lance pour l'index 4 (Nerual) les scripts `$190C0` et `$1908E`.
+Le second utilise les sprites 24 et 25, alors que le fichier `nerual` n'en a
+que 14. Par leur place en mémoire — juste avant la table de `general`, comme
+chaque personnage a ses scripts juste avant sa table — ces scripts semblent
+être ceux d'Eneg, qui n'en reçoit aucun. Je ne tranche pas : le prototype
+suit le code et ignore les numéros de sprite hors de la banque.
+
+---
+
+# Cadence, robot du tableau, réactions — et une erreur de lecture corrigée
+
+## La cadence d'origine : 25 images par seconde, mesurée
+
+La boucle n'attend pas la VBL explicitement : chaque image se termine par
+l'échange d'écran (`$15AEA`, installé comme trap 5), qui bascule le tampon
+puis **attend une VBL**. La cadence dépend donc du temps de calcul.
+
+Mesure : `lexan_debut.sav` relancé dans Hatari, AVI enregistré à **chaque**
+VBL (50/s) pendant 20 s de partie. Sur 992 images, l'écran change **une VBL
+sur deux** dans l'immense majorité des cas (330 paliers de 2 VBL), avec
+quelques paliers de 3 (16,7/s) quand l'image est plus lourde. **Le jeu tourne
+à 25 images par seconde.** Le prototype, à 50, allait deux fois trop vite.
+
+L'ancienne capture `partie.avi` ne pouvait pas trancher : elle ne contient
+que l'écran-titre et le zoom d'introduction.
+
+## Le robot du tableau (`0x00E262`)
+
+Une main tenant une craie (sprite 0 de `sprites`) ou une éponge (sprite 27),
+pilotée par la machine à états `$18438`, en tête du rendu de chaque image :
+
+| état | |
+|---|---|
+| 0 | repos, cachée ; `$E182` compare scores réels et scores affichés |
+| 1 | glisse en X vers la colonne du prochain bâton, 5 px par image |
+| 2 | puis en Y vers la ligne (joueur à 10, adversaire à 21) |
+| 3 | trace le bâton : 3 pas de 2 px, ou 4 pas (+4, +1) pour le 5e en diagonale |
+| 4 | redescend jusqu'à Y = 90 |
+| 5 | sort par la gauche jusqu'à X = −60, puis se cache |
+| 6, 7 | l'éponge, aller puis retour, quand un score a **baissé** |
+
+Colonne du n-ième bâton (`$DFEC`) : `x = (n/5)·18 + 36`, puis `+4·(n%5)+1`, ou
+`−16` pour le cinquième. La pointe de la craie est en `(X + 48, Y − 45)`.
+
+Les bâtons sont tracés dans le **décor** (`$1B52E`) : ils persistent.
+L'éponge recopie le tableau vierge par bandes de 4 lignes. La routine de copie
+de blocs `$17A5A` prend la **source en premier** — établi par cohérence entre
+trois appels.
+
+Le tableau lui-même est le sprite 1 de `sprites` (112×31), posé en (0, 30),
+avec « Visiteur » en (5, 9) et le nom de l'adversaire en (5, 20).
+
+## Les réactions et les voix (`0x00F998`)
+
+Chaque adversaire a une table de cinq scripts, lancés en mode 0 au point :
+0 point quelconque, 1 le joueur gagne, 2 le joueur marque, 3 l'adversaire
+marque, 4 l'adversaire gagne. Le tirage est **le même** que celui de
+l'ivresse de Lexan.
+
+Les fonctions de rappel de ces scripts jouent des sons (`$112C0`), sous deux
+formes seulement : une suite de sons fixes, ou un tirage `rand % 3` entre trois
+répliques. L'exporteur les **reconnaît au désassembleur** plutôt que de les
+recopier : 20 fonctions reconnues ; les autres sont exactement celles
+transcrites à la main.
+
+## Erreur corrigée : les index 4 et 5
+
+J'avais lu les cas de `0x00D786` **dans l'ordre du listing**, sans décoder sa
+table de saut. Décodée, elle envoie **l'index 4 (Nerual) sur `general`** et
+**l'index 5 (Eneg) sur `nerual`**. La « contradiction » signalée plus haut
+entre `D786`, `F522` et `F998` n'existait pas : les trois routines sont
+cohérentes, c'était ma lecture qui ne l'était pas. Deux personnages étaient
+inversés dans le prototype.
+
+## Un désaccord ouvert : la vitre du fond
+
+D'après le code, les éclats de la vitre du fond sont tracés **après** le
+personnage : leur script est dans la liste « derrière » (`$1AF28`), qui passe
+après la liste de fond et après le corps, et la routine de ligne (`$16EBE`)
+écrit ses pixels sans condition. Ils passent donc **devant** le personnage,
+sous les raquettes, coupés au bord de la table. Fabien se souvient de les voir
+passer derrière. À vérifier sur une capture d'un point marqué.

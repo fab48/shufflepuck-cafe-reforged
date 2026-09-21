@@ -1,4 +1,8 @@
-work/
+# work/ reste en local (images de disquettes, dumps mémoire, captures),
+# sauf work/assets/ : le produit de l'extraction est versionné, comme
+# web/assets/. Ces images et ces sons restent ceux des ayants droit.
+work/*
+!work/assets/
 __pycache__/
 *.pyc
 *.st
@@ -8,8 +12,3 @@ __pycache__/
 *.img
 *.rom
 ext/
-
-# Les assets extraits des disquettes : images, sons et sprites d'origine.
-# Le code de rétro-ingénierie est à nous, ce contenu ne l'est pas. Il reste
-# en local ; tools/exporter_web.py le régénère depuis ses propres disquettes.
-web/assets/

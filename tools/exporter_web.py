@@ -142,9 +142,36 @@ def main():
         print('  sprites %-12s %d sprites, %dx%d' % (nom, len(rects), w, h))
 
     # --- les neuf adversaires -------------------------------------------
-    for k, f in enumerate(sorted(glob.glob(os.path.join(TRAVAIL, 'assets', 'tc0', '*.bin')))):
+    # L'ordre est celui de l'index d'adversaire ($1B5AC), et le fichier est
+    # celui que 0x00D786 charge pour cet index. Chaque .TC0 a ete identifie
+    # en comparant les hauteurs de ses sprites a la table de placement que
+    # 0x00D786 associe au meme index (8 correspondances completes sur 9 ;
+    # bejin 6/18, seul fichier restant).
+    ram = open(os.path.join(TRAVAIL, 'dump', 'loaded.ram'), 'rb').read()
+    for vieux in glob.glob(os.path.join(SORTIE, '*adv[0-9]*')):
+        os.remove(vieux)
+    PERSOS = [  # (fichier charge, .TC0 sur la disquette 2, table de placement)
+        ('skip', 'disk2_011c00', 0x188A8), ('visine', 'disk2_014600', 0x18A42),
+        ('vinnie', 'disk2_019000', 0x18CA8), ('lexan', 'disk2_022a00', 0x18FC2),
+        # La table de saut de 0x00D786 envoie l'index 4 sur « general » et
+        # l'index 5 sur « nerual » -- pas dans l'ordre du listing.
+        ('general', 'disk2_02ae00', 0x1926E), ('nerual', 'disk2_03d600', 0x19514),
+        ('bejin', 'disk2_048600', 0x19708), ('biff', 'disk2_050c00', 0x198C4),
+        ('droid', 'disk2_008200', 0x199FC),
+    ]
+    # Les scripts d'animation que 0x00F522 lance en debut de partie, par
+    # index : (adresse, mode). Mode 1 = fond en boucle, 0 = une fois derriere.
+    SCRIPTS = [
+        [(0x18812, 1)], [(0x188F8, 1)],
+        [(0x18AB4, 1), (0x18A82, 1), (0x18AC8, 0)],
+        [(0x18D38, 1), (0x18D4C, 1), (0x18DB0, 0)],
+        [(0x190C0, 1), (0x1908E, 1)], [], [(0x1958C, 1)], [], [(0x1990C, 1)],
+    ]
+    REACTIONS = [0x18894, 0x18A2E, 0x18C94, 0x18FAE, 0x1925A,
+                 0x19500, 0x196F4, 0x198B0, 0x199E8]
+    for k, (nom, disque, table) in enumerate(PERSOS):
+        f = os.path.join(TRAVAIL, 'assets', 'tc0', disque + '.bin')
         d = open(f, 'rb').read()
-        nom = 'adv%d' % k
         sp = sprites_tc0(d)
         img, rects = planche(sp, colonnes=6)
         chemin = os.path.join(SORTIE, 'sprites_%s.png' % nom)
@@ -171,7 +198,15 @@ def main():
             nf = 'son_%s_%d.wav' % (nom, j)
             wav(os.path.join(SORTIE, nf), ech, hz)
             sons.append({'fichier': nf, 'frequence': hz})
+        mot = lambda o: struct.unpack_from('>h', ram, o)[0]
         manifeste['adversaires'].append({
+            'fichier': nom, 'tc0': disque,
+            'placement': [[mot(table + 8 * i + j) for j in (0, 2, 4, 6)]
+                          for i in range(len(rects))],
+            'scripts': [{'adresse': a, 'mode': mode} for a, mode in SCRIPTS[k]],
+            # $00F998 : les cinq reactions a un point, lancees en mode 0.
+            'reactions': [struct.unpack_from('>L', ram, REACTIONS[k] + 4 * n)[0]
+                          for n in range(5)],
             'sprites': 'sprites_%s.json' % nom,
             'nombre_sprites': len(rects),
             'sons': sons,
@@ -180,6 +215,69 @@ def main():
                            for e, t in s] for s in sequences],
         })
         print('  advers. %-12s %d sprites, %d son(s)' % (nom, len(rects), len(sons)))
+
+    # La zone memoire des scripts d'animation, telle quelle. Les scripts se
+    # REECRIVENT : les fonctions de rappel du personnage modifient le numero
+    # de sprite ou la duree d'une image directement dans ces octets. On les
+    # exporte donc comme une memoire, pas comme une liste figee.
+    import base64
+    DEBUT, FIN = 0x18800, 0x19D00
+    manifeste['memoire_scripts'] = {
+        'debut': DEBUT,
+        'octets': base64.b64encode(ram[DEBUT:FIN]).decode('ascii'),
+    }
+
+    # Les fonctions de rappel qui ne font que jouer des sons. Elles suivent
+    # deux formes, reconnues ici au desassembleur plutot que recopiees :
+    #   - une suite de « move.w #$80,-(a7) / move.w #$Xnn,-(a7) / jsr $112C0 »
+    #     qui joue chaque son ;
+    #   - la meme chose precedee de « jsr $FD94 / divs.w #$3 » : un seul des
+    #     trois sons, tire au hasard.
+    # $Xnn : X = banque (1 = bruitages, 2 = voix de l'adversaire), nn = sequence.
+    from capstone import Cs, CS_ARCH_M68K, CS_MODE_BIG_ENDIAN, CS_MODE_M68K_000
+    md = Cs(CS_ARCH_M68K, CS_MODE_BIG_ENDIAN | CS_MODE_M68K_000)
+    def scripts_de(a):
+        vus = set()
+        while a not in vus and DEBUT <= a < FIN:
+            vus.add(a)
+            yield a
+            if struct.unpack_from('>h', ram, a)[0] <= -3:
+                return
+            a += 10
+    rappels = set()
+    # Deux scripts lances par le moteur plutot qu'en debut de partie : le
+    # service de Bejin ($195BE) et la pose de Dc3 ($199B6).
+    autres = [0x195BE, 0x199B6]
+    for adv in manifeste['adversaires'] + [{'scripts': [{'adresse': a} for a in autres], 'reactions': []}]:
+        for s in [x['adresse'] for x in adv['scripts']] + [x for x in adv['reactions'] if x]:
+            for im in scripts_de(s):
+                f = struct.unpack_from('>L', ram, im + 4)[0]
+                if f:
+                    rappels.add(f)
+    sons_rappels, ignores = {}, []
+    for f in sorted(rappels):
+        ins = []
+        for i in md.disasm(ram[f:f + 200], f):
+            ins.append(i)
+            if i.mnemonic == 'rts':
+                break
+        texte = [f"{i.mnemonic} {i.op_str}" for i in ins]
+        ids = []
+        for n in range(len(ins) - 1):
+            if ins[n + 1].mnemonic == 'jsr' and '$112c0' in ins[n + 1].op_str \
+                    and ins[n].mnemonic == 'move.w' and ins[n].op_str.startswith('#$'):
+                ids.append(int(ins[n].op_str[2:].split(',')[0], 16))
+        autre = [t for t in texte if not any(t.startswith(p) for p in (
+            'link', 'unlk', 'rts', 'move.w #$80', 'move.w #$', 'jsr $112c0', 'addq.w #$4, a7',
+            'moveq #$0, d0', 'jsr $fd94', 'ext.l', 'divs.w #$3', 'swap', 'bra', 'tst.l',
+            'beq', 'subq.l #$1'))]
+        if ids and not autre:
+            sons_rappels[f] = {'hasard': any('divs.w #$3' in t for t in texte), 'sons': ids}
+        else:
+            ignores.append(f)
+    manifeste['rappels_sons'] = {str(f): v for f, v in sons_rappels.items()}
+    print('  rappels  %d fonctions de son reconnues ; non reconnues : %s'
+          % (len(sons_rappels), ' '.join('%X' % f for f in ignores)))
 
     # --- les deux banques sonores ----------------------------------------
     for f in sorted(glob.glob(os.path.join(TRAVAIL, 'assets', 'ech', '*.ech'))):
@@ -227,7 +325,7 @@ def main():
               ('pas_frappe_y', 0x38), ('disp_x_min', 0x3a), ('disp_x_max', 0x3c),
               ('disp_y_min', 0x3e), ('disp_y_max', 0x40), ('cible_x_min', 0x42),
               ('cible_x_max', 0x44), ('cible_y_min', 0x46), ('cible_y_max', 0x48),
-              ('erreur_visee', 0x4a), ('seuil_reaction', 0x4e),
+              ('erreur_visee', 0x4a), ('tremblement', 0x4c), ('seuil_reaction', 0x4e),
               ('pas_simulation', 0x50)]
     mot = lambda o: struct.unpack_from('>h', ram, o)[0]
     table = []
@@ -245,6 +343,29 @@ def main():
     for champ, off in CHAMPS[1:9]:
         joueur[champ] = mot(0x19CF4 + off)
     manifeste['joueur'] = joueur
+
+    # La vitre : un cadre de fissure et 13 eclats, traces en lignes par
+    # 0x00F164. Enregistrements de 14 octets a $19B04 (le cadre) et $19B12
+    # (les eclats) : +0 pointeur vers des paires d'indices de sommets
+    # terminees par un second indice nul, +4 vitesse X, +6 vitesse Y
+    # initiale. Les sommets sont a $19BC8, deux mots chacun.
+    def paires(p):
+        out = []
+        while ram[p + 1] != 0:
+            out.append([ram[p], ram[p + 1]])
+            p += 2
+        return out
+    enr = []
+    for k in range(14):
+        a = 0x19B04 + 14 * k
+        enr.append({'lignes': paires(struct.unpack_from('>L', ram, a)[0]),
+                    'vx': mot(a + 4), 'vy0': mot(a + 6)})
+    n = 1 + max(max(i, j) for e in enr for i, j in e['lignes'])
+    manifeste['vitre'] = {
+        'cadre': enr[0]['lignes'],
+        'eclats': enr[1:],
+        'sommets': [[mot(0x19BC8 + 4 * i), mot(0x19BC8 + 4 * i + 2)] for i in range(n)],
+    }
     print('  table   %-12s %d adversaires : %s'
           % ('parametres', len(table), ', '.join(b['nom'] for b in table)))
 
