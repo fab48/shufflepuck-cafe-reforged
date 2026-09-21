@@ -1,24 +1,42 @@
-// moteur.js — physique et IA de Shufflepuck Cafe.
+// moteur.js — la boucle de jeu de Shufflepuck Cafe, transcrite du 68000.
 //
-// Transcription directe de src/shufflepuck.c et src/ia.c, eux-memes
-// transcrits du 68000 d'origine. Aucune formule n'est reecrite « en mieux » :
-// la provenance de chacune est dans PHYSICS.md, et les ecarts d'arrondi
-// changent le ressenti.
+// Deuxieme version. La premiere transcrivait les routines isolees mais
+// INVENTAIT tout ce qui les reliait : la detection de collision, les
+// transitions de l'IA, le bornage de la raquette adverse, le service, le
+// point. Tout cela a depuis ete lu dans le code, et c'est ce qui est ici.
 //
-// Un point d'attention permanent : le 68000 divise en tronquant VERS ZERO
-// (instruction DIVS). En JavaScript, `a / b` donne un flottant et `Math.floor`
-// arrondit vers le bas — ce qui differe pour les negatifs. On passe donc
-// partout par `div()`, qui tronque vers zero.
+// Chaque fonction porte l'adresse de la routine d'origine. Les variables
+// portent le nom de leur adresse memoire quand elles sont globales dans
+// l'original : c'est plus laid, mais on peut tout verifier au desassembleur.
+//
+// Arithmetique : tout est en mots de 16 bits signes, et le 68000 divise en
+// tronquant VERS ZERO (DIVS). `div()` et `w16()` reproduisent l'un et l'autre.
+//
+// Ce qui reste une reconstruction est signale par RECONSTRUCTION.
 
-export const ETAT = Object.freeze({
-  ANTICIPE: 0, POURSUIT: 1, ARRIVE: 2, FRAPPE_A: 3,
-  RECENTRE: 4, FRAPPE_B: 5, SERVICE: 6,
+export const ETAT_JEU = Object.freeze({   // $1B594, repartiteur 0x0105F0
+  RETOUR_JOUEUR: 1,     // le palet revient au point de service du joueur
+  RETOUR_ADV: 2,        // ... de l'adversaire
+  JEU: 3,               // la partie
+  FIN: 4,               // quelqu'un a 15 points
+  POINT: 5,             // la vitre se brise
+  LANCER_BEJIN: 6,      // le palet part tout seul (service de Bejin)
 });
 
-/** Division entiere tronquee vers zero, comme DIVS. */
-export function div(a, b) { return Math.trunc(a / b); }
+export const ETAT_ADV = Object.freeze({   // $1B598, repartiteur 0x010F3A
+  ANTICIPE: 0, POURSUIT: 1, FRAPPE: 2, SERVICE: 3,
+  IMMOBILE_4: 4, IMMOBILE_5: 5, RECENTRE: 6, FRAPPE_SERVICE: 7,
+});
 
-/** $00FDEC — bornage a trois arguments. */
+// Index dans la table $19D14 (et donc $1B5AC).
+const LEXAN = 3, NERUAL = 4, ENEG = 5, BEJIN = 6, BIFF = 7, DC3 = 8;
+
+/** Division tronquee vers zero, comme DIVS. */
+export const div = (a, b) => Math.trunc(a / b);
+/** Ramene a un mot signe de 16 bits, comme toute operation .w */
+export const w16 = (v) => ((v + 32768) & 0xFFFF) - 32768;
+
+/** $00FDEC */
 export function borner(min, v, max) {
   if (v < min) return min;
   if (v > max) return max;
@@ -26,349 +44,526 @@ export function borner(min, v, max) {
 }
 
 export class Moteur {
-  /** @param m le manifeste exporte par tools/exporter_web.py */
   constructor(m) {
     this.k = m.moteur;
-    this.table = m.table_adversaires;
-    this.gabaritJoueur = m.joueur;
-    this.alea = (min, max) => {
-      // L'original tire dans [min, max]. Skip a disp_x = alea(34, 30),
-      // borne haute INFERIEURE a la borne basse : c'est un bug d'origine,
-      // conserve tel quel (voir PHYSICS.md). On ne le « corrige » pas.
-      const n = max - min + 1;
-      if (n <= 0) return min + div(Math.floor(Math.random() * 0x8000), n || -1);
-      return min + Math.floor(Math.random() * n);
+    this.m = m;
+    this.graine = 12345;                 // $1AFB4
+    this.sons = [];                      // sons declenches pendant l'image
+    this.nouvellePartie(0);
+  }
+
+  // --- $00FD94 : le generateur aleatoire d'origine --------------------------
+  // Une congruence lineaire avec un terme supplementaire (graine >> 20).
+  rand() {
+    const g = this.graine >>> 0;
+    const p = Number((BigInt(g) * 0x41C64E6Dn) & 0xFFFFFFFFn);
+    this.graine = (p + (g >>> 20) + 0x3039) >>> 0;
+    return (this.graine >>> 16) & 0x7FFF;
+  }
+
+  // --- $00FDCE : tirage dans [min, max] --------------------------------------
+  // Reste d'une DIVS, dont le signe suit le dividende (toujours positif ici).
+  // Si max < min, le diviseur est negatif et le tirage tombe dans
+  // [min, min + |diviseur| - 1] : c'est ce qui arrive a Skip avec (34, 30).
+  alea(min, max) {
+    const n = max - min + 1;
+    const r = this.rand();
+    if (n === 0) return min;             // le 68000 leverait une exception
+    return w16(min + (r % Math.abs(n)));
+  }
+
+  // --- $00FE9E : a * b / c, en 16 bits ---------------------------------------
+  muldiv(a, b, c) { return w16(div(a * b, c)); }
+
+  nouvellePartie(index) {
+    const m = this.m;
+    // La table des neuf blocs. Les blocs statiques sont partages : quand
+    // Nerual copie la frappe du joueur, il modifie SON bloc, durablement.
+    this.table = m.table_adversaires.map((b) => Object.assign({}, b,
+      { x: 0, y: 1500, vx: 0, vy: 0, frappe: 1 }));
+    this.lexanSobre = Object.assign({}, this.table[LEXAN]);
+    const g = m.joueur;
+    this.J = {                          // $19CF4, bloc court du joueur
+      x: 0, y: g.y, vx: 0, vy: 0, largeur: g.largeur, frappe: 0,
+      reflex_x: g.reflex_x, reflex_y: g.reflex_y, accel_x: g.accel_x, accel_y: g.accel_y,
+      reflex_x2: g.reflex_x2, reflex_y2: g.reflex_y2, accel_x2: g.accel_x2, accel_y2: g.accel_y2,
     };
-    this.reinitialiser(0);
+    this.D = 100;                       // $19CE8, le diviseur des coefficients
+    this.P = { x: 0, y: 0, dx: 0, dy: 0 };   // $1B58C..$1B592
+    this.s0 = 0; this.s1 = 0;           // $1B588 (adversaire), $1B58A (joueur)
+    this.serveur = 1;                   // $1B584  RECONSTRUCTION : valeur initiale
+    this.fin = 0;                       // $1B586
+    this.nerualCopie = 0;               // $1B59A
+    this.bejinB2 = 0; this.bejinB4 = 0; // $1B5B2, $1B5B4
+    this.compteService = 30;            // $19D12
+    // Les globales de l'IA ($1AFB8..$1AFCE)
+    this.vpx = 0; this.vpy = 0;
+    this.sim = { x: 0, y: 0, dx: 0, dy: 0 };
+    this.cibleX = 0; this.cibleY = 0;
+    this.xAv = 0; this.yAv = 0; this.xN = 0; this.yN = 0;
+    this.vitre = null;
+    this.choisirAdversaire(index);
+    this.paletAuService();              // $FEB0
+    this.etatJeu = this.serveur ? ETAT_JEU.RETOUR_JOUEUR : ETAT_JEU.RETOUR_ADV;
+    this.etatAdv = ETAT_ADV.RECENTRE;
   }
 
-  reinitialiser(indexAdversaire) {
-    const k = this.k;
-    const g = this.gabaritJoueur;
-    this.joueur = {
-      x: 0, y: k.y_joueur, vx: 0, vy: 0,
-      largeur: g.largeur, frappe: 0,
-      reflex_x: g.reflex_x, reflex_y: g.reflex_y,
-      accel_x: g.accel_x, accel_y: g.accel_y,
-      reflex_x2: g.reflex_x2, reflex_y2: g.reflex_y2,
-      accel_x2: g.accel_x2, accel_y2: g.accel_y2,
-    };
-    this.adversaire = Object.assign({ x: 0, vx: 0, vy: 0, frappe: 1 },
-                                    this.table[indexAdversaire]);
-    // Sa zone de patrouille est [y_fond - y_loin, y_fond - y_pres] : pour
-    // Skip, 1337 a 1416. SP_Y_ADVERSAIRE (1205) est sa ligne de SERVICE,
-    // pas sa position de jeu. On le place au milieu de sa zone.
-    this.adversaire.y = k.y_fond - div(this.adversaire.y_pres + this.adversaire.y_loin, 2);
-    this.adversaire.x = div(this.adversaire.x_min + this.adversaire.x_max, 2);
-    this.index = indexAdversaire;
-    this.palet = { x: 0, y: k.y_joueur, dx: 0, dy: 0 };
-    this.etat = ETAT.SERVICE;
-    this.cible = { x: 0, y: 0 };
-    this.frappeVers = { x: 0, y: 0 };
-    this.scores = [0, 0];
-    this.enJeu = false;
-    this.rebonds = [];          // profondeurs des rebonds de l'image courante
+  // --- $0106DC : choix de l'adversaire ----------------------------------------
+  // Seul Lexan joue sur une copie de travail, restauree a 0-0 : c'est ce qui
+  // permet a l'ivresse de s'accumuler au fil d'une partie sans abimer la
+  // table.
+  choisirAdversaire(index) {
+    this.idx = index;
+    if (index === LEXAN && this.s0 === 0) {
+      this.table[LEXAN] = Object.assign({}, this.lexanSobre,
+        { x: 0, y: 1500, vx: 0, vy: 0, frappe: 1 });
+    }
+    this.A = this.table[index];
+    this.A.x = 0; this.A.y = 1350;
+    this.ivresses = 0;
   }
 
-  // --- $010466 : un pas de physique du palet -------------------------------
-  // Les vitesses sont bornees AVANT l'integration, comme dans l'original.
-  avancerPalet(p, surRebond) {
-    const k = this.k;
-    p.dx = borner(-k.palet_dx_max, p.dx, k.palet_dx_max);
-    p.dy = borner(-k.palet_dy_max, p.dy, k.palet_dy_max);
-    p.x += p.dx;
-    p.y += p.dy;
-    if (p.x < -k.mur_x) {
-      if (surRebond) surRebond(p.y);
-      p.dx = -p.dx;
-      p.x = -k.mur_reflexion - p.x;       // reflexion miroir
-    } else if (p.x > k.mur_x) {
-      if (surRebond) surRebond(p.y);
-      p.dx = -p.dx;
-      p.x = k.mur_reflexion - p.x;
+  // --- $00FEB0 : le palet au point de service ---------------------------------
+  paletAuService() {
+    const P = this.P;
+    P.x = 0;
+    P.y = this.serveur ? 295 : 1205;
+    P.dx = 0; P.dy = 0;
+    this.etatJeu = ETAT_JEU.JEU;
+  }
+
+  son(banque, sequence) { this.sons.push({ banque, sequence }); }
+
+  // =========================================================================
+  //  UNE IMAGE — l'ordre est celui de la boucle 0x00DAA4
+  // =========================================================================
+  image(sourisDx, sourisDy, bouton) {
+    this.sons = [];
+    this.joueur(sourisDx, sourisDy, bouton);   // $FD38 -> $FB7A
+    this.ia();                                 // $10EAA
+    this.palet();                              // $1034C
+    this.vitreAnime();                         // $F288 / $F336
+    this.score();                              // $D4D4
+  }
+
+  // --- $00FB7A : la raquette du joueur ----------------------------------------
+  joueur(sx, sy, bouton) {
+    const J = this.J;
+    let dx = borner(-32, sx, 32);
+    let dy = borner(-32, sy, 32);
+    // Courbe d'acceleration : |d|/2 d'abord, puis * d, puis / 4.
+    dx = w16(dx + div(dx * (Math.abs(dx) >> 1), 4));
+    dy = w16(dy + div(dy * (Math.abs(dy) >> 1), 4));
+    dx = borner(-200, dx, 200);
+    dy = borner(-200, dy, 200);
+    const demi = J.largeur >> 1;
+    const nx = borner(demi - 250, J.x + dx, 250 - demi);
+    J.vx = nx - J.x; J.x = nx;
+    // La raquette du joueur vit dans [0, 300]. Y est inverse.
+    const ny = borner(0, J.y - dy, 300);
+    J.vy = ny - J.y; J.y = ny;
+    // Bouton enfonce : second jeu de coefficients (accel_y 140 au lieu de 130).
+    J.frappe = bouton ? 1 : 0;
+  }
+
+  // =========================================================================
+  //  LE PALET — repartiteur 0x0105F0 sur $1B594
+  // =========================================================================
+  palet() {
+    const P = this.P;
+    switch (this.etatJeu) {
+      case ETAT_JEU.RETOUR_JOUEUR:                      // $10368
+        P.x += borner(-15, -P.x, 15);
+        P.y += borner(-60, 295 - P.y, 60);
+        if (P.x === 0 && P.y === 295) {
+          this.paletAuService();
+          this.etatAdv = ETAT_ADV.RECENTRE;
+        }
+        break;
+      case ETAT_JEU.RETOUR_ADV:                         // $103D6
+        P.x += borner(-15, -P.x, 15);
+        P.y += borner(-60, 1205 - P.y, 60);
+        if (P.x === 0 && P.y === 1205) {
+          this.paletAuService();
+          this.etatAdv = ETAT_ADV.SERVICE;
+        }
+        break;
+      case ETAT_JEU.JEU:
+        this.paletAvance();
+        break;
+      case ETAT_JEU.LANCER_BEJIN:
+        this.lancerBejin();
+        break;
+      default:                                          // 0, 4, 5
+        this.etatAdv = ETAT_ADV.RECENTRE;
     }
   }
 
-  // --- $00FEEC : reponse a la collision ------------------------------------
-  //   dx' = ( dx * reflexion_x + raquette.vx * acceleration_x ) / 100
-  //   dy' = ( raquette.vy * acceleration_y - dy * reflexion_y ) / 100
-  // Le signe moins devant dy produit l'inversion : le palet repart.
-  collision(p, r) {
-    const k = this.k;
-    const rx = r.frappe ? r.reflex_x2 : r.reflex_x;
-    const ry = r.frappe ? r.reflex_y2 : r.reflex_y;
-    const ax = r.frappe ? r.accel_x2 : r.accel_x;
-    const ay = r.frappe ? r.accel_y2 : r.accel_y;
-    p.dx = div(p.dx * rx + r.vx * ax, k.pourcent);
-    p.dy = div(r.vy * ay - p.dy * ry, k.pourcent);
-    p.dx = borner(-k.palet_dx_max, p.dx, k.palet_dx_max);
-    p.dy = borner(-k.palet_dy_max, p.dy, k.palet_dy_max);
-  }
-
-  // --- $00FB7A : souris vers raquette du joueur ----------------------------
-  // La vitesse est le deplacement REEL, calcule APRES bornage : raquette
-  // contre un mur => vitesse nulle => aucune puissance transmise. L'original
-  // ne le programme nulle part, cela decoule de cet ordre de calcul.
-  raquetteJoueur(j, sourisDx, sourisDy) {
-    const k = this.k;
-    let dx = borner(-k.souris_max, sourisDx, k.souris_max);
-    let dy = borner(-k.souris_max, sourisDy, k.souris_max);
-    const demi = div(j.largeur, 2);
-
-    // Courbe d'acceleration. L'ORDRE COMPTE : |d|/2 d'abord, puis la
-    // multiplication, puis /4. Regrouper en d*|d|/8 donne un entier
-    // different (pour d=5 : 7 et non 8).
-    dx += div(dx * div(Math.abs(dx), 2), 4);
-    dy += div(dy * div(Math.abs(dy), 2), 4);
-    dx = borner(-k.depl_max, dx, k.depl_max);
-    dy = borner(-k.depl_max, dy, k.depl_max);
-
-    const nx = borner(demi - k.limite_mur, j.x + dx, k.limite_mur - demi);
-    const ny = borner(this.k.y_joueur - 120, j.y - dy, this.k.y_joueur + 120);
-    j.vx = nx - j.x;
-    j.vy = ny - j.y;
-    j.x = nx;
-    j.y = ny;
-  }
-
-  // --- $010802 : patrouille ------------------------------------------------
-  patrouille(r) {
-    const k = this.k;
-    const demi = div(r.largeur, 2);
-    let nx = r.x + r.vx;
-    let ny = r.y + r.vy;
-    if (nx >= r.x_max || nx + demi >= k.limite_mur) {
-      if (r.vx >= 0) { nx = r.x_max; r.vx = -r.vr_droite; }
-    } else if (nx <= r.x_min || nx - demi <= -k.limite_mur) {
-      if (r.vx <= 0) { nx = r.x_min; r.vx = r.v_attente_x; }
+  // --- $010466 : la partie proprement dite -----------------------------------
+  paletAvance() {
+    const P = this.P;
+    P.dx = borner(-150, P.dx, 150);
+    P.dy = borner(-300, P.dy, 300);
+    P.x = w16(P.x + P.dx);
+    P.y = w16(P.y + P.dy);
+    if (P.x < -226) {
+      this.son(1, this.sequenceRebond(P.y));
+      P.dx = -P.dx; P.x = -452 - P.x;
     }
-    if (ny >= k.y_fond - r.y_pres) {
-      if (r.vy >= 0) { ny = k.y_fond - r.y_pres; r.vy = -r.vr_pres; }
-    } else if (ny <= k.y_fond - r.y_loin) {
-      if (r.vy <= 0) { ny = k.y_fond - r.y_loin; r.vy = r.v_attente_y; }
+    if (P.x > 226) {
+      this.son(1, this.sequenceRebond(P.y));
+      P.dx = -P.dx; P.x = 452 - P.x;
     }
-    r.x = nx;
-    r.y = ny;
+    this.collisionJoueur();     // $10096
+    this.collisionAdversaire(); // $101D0
+    // $1023C : l'obstacle, desactive ($19CF2 = 0) — non transcrit
+    // Le palet ne SORT jamais : il est borne, et c'est $D4D4 qui constate
+    // qu'il touche un fond.
+    P.y = borner(-18, P.y, 1500);
   }
 
-  // --- $01096C : recentrage ------------------------------------------------
-  recentre(r) {
-    const k = this.k;
-    const cx = div(r.x_min + r.x_max, 2);
-    const cy = div(r.y_pres + r.y_loin, 2);
-    r.vx = (r.x > cx) ? -r.vr_droite : r.v_attente_x;
-    r.vy = (k.y_fond - r.y > cy) ? r.v_attente_y : -r.vr_pres;
-    this.patrouille(r);
-  }
+  // $11486 : la sequence de rebond, selon la profondeur.
+  sequenceRebond(y) { return borner(4, div(y, 68) + 4, 25); }
 
-  // --- $010A02 : anticipation ----------------------------------------------
-  // L'adversaire rejoue la VRAIE physique en avance rapide. Sa prediction est
-  // donc exacte par construction ; la difficulte vient de l'erreur de visee,
-  // du seuil de reaction et de la profondeur d'anticipation.
-  anticipe(r, palet) {
-    const k = this.k;
-    if (palet.dy <= 0) return null;                       // il s'eloigne
-    if (palet.y <= k.y_fond - r.seuil_reaction) return null;  // trop tot
-    const sim = Object.assign({}, palet);
-    sim.x += this.alea(-r.erreur_visee, r.erreur_visee);
-    for (let n = 0; n < r.pas_simulation; n++) this.avancerPalet(sim, null);
-    return { x: sim.x, y: sim.y };
-  }
+  // --- $00FEEC : collision --------------------------------------------------
+  // Renvoie 1 s'il y a contact. Le test en X est BALAYE : l'intervalle
+  // parcouru par le palet pendant l'image, relativement a la raquette,
+  // elargi de 24 (le rayon du palet), doit chevaucher la raquette.
+  collision(r) {
+    const P = this.P;
+    const rel = w16(P.dx - r.vx);
+    let a, b;
+    if (rel > 0) { a = 0; b = rel; } else { a = rel; b = 0; }
+    const demi = r.largeur >> 1;
+    if (!(P.x - a + 24 > r.x - demi)) return 0;
+    if (!(P.x - b - 24 < r.x + demi)) return 0;
 
-  // --- $010AB6 : poursuite -------------------------------------------------
-  // RECONSTRUCTION : le bornage de la cible dans la zone de l'adversaire
-  // n'est pas lu dans le code d'origine. Il est ajoute ici parce que sans
-  // lui la raquette derive indefiniment hors de la table. La routine de
-  // deplacement elle-meme, en revanche, est transcrite.
-  poursuit(r, cibleBrute) {
-    const k = this.k;
-    const demi = div(r.largeur, 2);
-    const cible = {
-      x: borner(Math.min(r.x_min, r.x_max), cibleBrute.x, Math.max(r.x_min, r.x_max)),
-      y: borner(k.y_fond - r.y_loin, cibleBrute.y, k.y_fond - r.y_pres),
-    };
-    cible.x = borner(demi - k.limite_mur, cible.x, k.limite_mur - demi);
-    const nx = r.x + borner(-r.pas_gauche, cible.x - r.x, r.v_attaque);
-    const ny = r.y + borner(-r.pas_avant, cible.y - r.y, r.pas_arriere);
-    if (nx === r.x && ny === r.y) {
-      return {
-        x: cible.x + this.alea(r.disp_x_min, r.disp_x_max),
-        y: cible.y + this.alea(r.disp_y_min, r.disp_y_max),
-      };
+    // $1151C : le son de frappe, plus grave dans la moitie lointaine.
+    this.son(1, P.y > 750 ? 1 : 0);
+
+    // Chaque terme est divise SEPAREMENT par $19CE8 (100), puis additionne.
+    const md = (x, y) => this.muldiv(x, y, this.D);
+    if (!r.frappe) {
+      P.dx = w16(md(P.dx, r.reflex_x) + md(r.vx, r.accel_x));
+      P.dy = w16(md(r.vy, r.accel_y) - md(P.dy, r.reflex_y));
+    } else {
+      P.dx = w16(md(P.dx, r.reflex_x2) + md(r.vx, r.accel_x2));
+      P.dy = w16(md(r.vy, r.accel_y2) - md(P.dy, r.reflex_y2));
     }
-    r.x = nx;
-    r.y = ny;
-    return null;
+    return 1;
   }
 
-  // RECONSTRUCTION. La zone de patrouille (+$1E/+$20 en X, +$22/+$24 en Y)
-  // est lue dans le code, et c'est la seule borne connue pour la raquette
-  // adverse. On l'applique apres CHAQUE mouvement : sans cela, la frappe,
-  // qui vise une cible dispersee au hasard, emmene la raquette hors de la
-  // table. Le code d'origine contient forcement l'equivalent, je ne l'ai pas
-  // encore trouve.
-  contraindre(r) {
-    const k = this.k;
-    const demi = div(r.largeur, 2);
-    const xa = Math.min(r.x_min, r.x_max), xb = Math.max(r.x_min, r.x_max);
-    r.x = borner(Math.max(xa, demi - k.limite_mur), r.x,
-                 Math.min(xb, k.limite_mur - demi));
-    r.y = borner(k.y_fond - r.y_loin, r.y, k.y_fond - r.y_pres);
-  }
+  // --- $010096 : contact avec la raquette du joueur -----------------------
+  // On compare les positions de l'image PRECEDENTE (position - vitesse) :
+  // de quel cote du palet se trouvait la raquette ? Puis on teste le
+  // franchissement avec une marge de 24.
+  collisionJoueur() {
+    const P = this.P, J = this.J;
+    const cote = (P.y - P.dy) > (J.y - J.vy) ? 1 : 0;
+    let touche;
+    if (cote) touche = P.y - 24 < J.y;
+    else touche = P.y + 24 > J.y;
+    if (!touche) return;
+    if (!this.collision(J)) return;
 
-  // --- $010BCE / $010C7C : frappe ------------------------------------------
-  // Seul etat ou la raquette transmet sa puissance (drapeau `frappe` a 0).
-  frappe(r, vers) {
-    r.x += borner(-r.v_defense, vers.x - r.x, r.v_defense);
-    r.y += borner(-r.pas_frappe_y, vers.y - r.y, r.pas_frappe_y);
-    r.frappe = 0;
-  }
+    P.y = cote ? J.y + 24 : J.y - 24;             // le palet est repose contre la raquette
+    if (P.y > 300 && P.dy < 5) P.dy = 5;          // vitesse de fuite minimale
 
-  // --- $0110BA : l'ivresse de Lexan ----------------------------------------
-  // Trois coefficients distincts : il s'affaiblit, il titube, il rate.
-  // Verifie a l'entier pres sur 19 champs.
-  lexanBoit(r) {
-    const d = (v, num) => {
-      const p = v * num;
-      return p >= 0 ? div(p, 100) : -div(-p, 100);   // DIVS tronque vers zero
-    };
-    for (const c of ['reflex_x', 'reflex_y', 'accel_x', 'accel_y',
-                     'reflex_x2', 'reflex_y2',
-                     'vr_droite', 'v_attente_x', 'v_attente_y', 'vr_pres',
-                     'pas_gauche', 'v_attaque', 'pas_arriere', 'pas_avant',
-                     'v_defense', 'pas_frappe_y']) {
-      r[c] = d(r[c], 82);
+    // Nerual : a la premiere frappe du joueur apres certains points, il
+    // RECOPIE ce coup dans son propre bloc (acceleration, et vecteur de
+    // service). C'est sa facon de "copier" le joueur.
+    if (this.nerualCopie) {
+      this.nerualCopie = 0;
+      const N = this.table[NERUAL];
+      if (!J.frappe) { N.accel_x = J.accel_x; N.accel_y = J.accel_y; }
+      else { N.accel_x = J.accel_x2; N.accel_y = J.accel_y2; }
+      const vy = J.vy < 5 ? 5 : J.vy;
+      N.cible_y_min = vy; N.cible_y_max = vy;
+      N.cible_x_min = J.vx; N.cible_x_max = J.vx;
     }
-    r.x_min = d(r.x_min, 107);          // la zone s'elargit : il titube
-    r.x_max = d(r.x_max, 107);
-    r.erreur_visee = d(r.erreur_visee, 105);   // et il rate davantage
   }
 
-  // --- projection ----------------------------------------------------------
-  // $DB9C : abscisse. Le centre tombe exactement sur 160 — confirme sur
-  // l'image du terrain extraite de la disquette, sur chaque ligne.
-  projeterX(x, y) {
-    const k = this.k;
-    return div(x * k.proj_echelle, y + k.proj_recul) + k.ecran_centre;
+  // --- $0101D0 : contact avec la raquette adverse --------------------------
+  // Asymetrique : pas de marge de 24 ici. La raquette doit etre passee du
+  // cote lointain du palet a son niveau ou en deca.
+  collisionAdversaire() {
+    const P = this.P, A = this.A;
+    if (!((A.y - A.vy) > (P.y - P.dy))) return;
+    if (!(A.y <= P.y)) return;
+    if (!this.collision(A)) return;
+    P.y = A.y - 3;
+    if (P.dy > -5) P.dy = -5;
   }
 
-  // $DBC2 : ordonnee. Le PREMIER argument est une HAUTEUR, pas une abscisse —
-  // etabli par le site d'appel 0x00DC58, qui projette les quatre coins d'un
-  // rectangle en passant deux hauteurs differentes et la meme profondeur.
-  projeterY(hauteur, profondeur) {
-    const p = this.k.proj_y;
-    const t = div(profondeur * p.t_num, profondeur + p.t_den);
-    return (p.sol - t) - (hauteur * (p.hauteur_num - t) >> p.hauteur_dec);
+  // --- $01054A : le palet lance par Bejin -----------------------------------
+  lancerBejin() {
+    const P = this.P;
+    if (P.y > 750) { P.y -= 50; return; }
+    if (P.x > -100 && P.x < 100) { P.x += this.bejinB2 ? 10 : -10; return; }
+    P.dy = this.alea(-200, -150);
+    if (this.bejinB4) P.dx = w16(div(w16(P.dy * 7), 16));
+    else P.dx = div(-P.dy, 5);
+    if (P.x < 0) P.dx = -P.dx;
+    this.etatJeu = ETAT_JEU.JEU;
   }
 
-  // $11486 : la sequence de rebond selon la profondeur. Le ST transpose :
-  // un seul echantillon, rejoue a vingt-trois hauteurs.
-  sequenceRebond(y) {
-    const k = this.k;
-    return borner(k.son_rebond_base, div(y, k.son_rebond_pas) + k.son_rebond_base, 26);
+  // =========================================================================
+  //  L'IA — repartiteur 0x010EAA
+  // =========================================================================
+  ia() {
+    const A = this.A;
+    this.xAv = A.x; this.yAv = A.y;          // $1AFC8, $1AFCA
+    switch (this.etatAdv) {
+      case 0: this.anticipe();       A.frappe = 1; break;
+      case 1: this.poursuit();       A.frappe = 1; break;
+      case 2: this.frappe();         A.frappe = 0; break;
+      case 3: this.service();        A.frappe = 1; break;
+      case 6: this.recentre();       A.frappe = 1; break;
+      case 7: this.frappeService();  A.frappe = 0; break;
+      default: break;                // 4, 5 : immobile
+    }
+    // $10F68 : le tremblement, sauf en recentrage et a l'arret.
+    if ([0, 1, 2, 3, 7].includes(this.etatAdv) && A.tremblement) {
+      if (this.xN !== this.xAv) this.xN = w16(this.xN + this.alea(-A.tremblement, A.tremblement));
+      if (this.yN !== this.yAv) this.yN = w16(this.yN + this.alea(-A.tremblement, A.tremblement));
+    }
+    // $11000 : la seule borne de la raquette adverse.
+    const demi = A.largeur >> 1;
+    this.xN = borner(demi - 250, this.xN, 250 - demi);
+    this.yN = borner(1200, this.yN, 1500);
+    A.x = this.xN; A.y = this.yN;
+    // La vitesse est le deplacement reel. C'est ce qui fait la frappe.
+    A.vx = w16(this.xN - this.xAv);
+    A.vy = w16(this.yN - this.yAv);
+    if (this.P.dy < 0 && this.etatAdv !== 0) this.etatAdv = ETAT_ADV.RECENTRE;
   }
 
-  // --- la boucle -----------------------------------------------------------
-  pas(sourisDx, sourisDy, servir) {
-    const k = this.k;
-    this.rebonds = [];
-    const surRebond = (y) => this.rebonds.push(this.sequenceRebond(y));
+  // --- $010802 : patrouille -------------------------------------------------
+  // La vitesse de patrouille est GLOBALE ($1AFB8, $1AFBA), pas dans le bloc.
+  patrouille() {
+    const A = this.A;
+    const demi = div(A.largeur, 2);
+    this.xN = w16(this.xAv + this.vpx);
+    this.yN = w16(this.yAv + this.vpy);
+    if ((this.xN >= A.x_max || this.xN + demi >= 250) && this.vpx >= 0) {
+      this.xN = A.x_max; this.vpx = -A.vr_droite;
+    } else if ((this.xN <= A.x_min || this.xN - demi <= -250) && this.vpx <= 0) {
+      this.xN = A.x_min; this.vpx = A.v_attente_x;
+    }
+    if (this.yN >= 1500 - A.y_pres && this.vpy >= 0) {
+      this.yN = 1500 - A.y_pres; this.vpy = -A.vr_pres;
+    } else if (this.yN <= 1500 - A.y_loin && this.vpy <= 0) {
+      this.yN = 1500 - A.y_loin; this.vpy = A.v_attente_y;
+    }
+  }
 
-    this.raquetteJoueur(this.joueur, sourisDx, sourisDy);
+  // --- $01096C : recentrage, puis retour a l'anticipation ------------------
+  recentre() {
+    const A = this.A;
+    this.vpx = this.xAv > div(A.x_min + A.x_max, 2) ? -A.vr_droite : A.v_attente_x;
+    this.vpy = (1500 - this.yAv) > div(A.y_pres + A.y_loin, 2) ? A.v_attente_y : -A.vr_pres;
+    this.patrouille();
+    this.etatAdv = ETAT_ADV.ANTICIPE;
+  }
 
-    if (!this.enJeu) {
-      this.palet.x = this.joueur.x;
-      this.palet.y = this.joueur.y;
-      this.palet.dx = 0;
-      this.palet.dy = 0;
-      if (servir) { this.enJeu = true; this.palet.dy = 60; }
-      this.iaAttente();
+  // --- $010730 : borne le point simule dans la zone adverse ---------------
+  bornerSim() {
+    const demi = this.A.largeur >> 1;
+    this.sim.x = borner(demi - 250, this.sim.x, 250 - demi);
+    this.sim.y = borner(1200, this.sim.y, 1500);
+  }
+
+  // --- $01078E : un pas de simulation ---------------------------------------
+  // S'arrete des que le palet simule entre dans la zone adverse.
+  simPas() {
+    const s = this.sim;
+    if (s.y > 1200) { this.bornerSim(); return 0; }
+    s.x = w16(s.x + s.dx); s.y = w16(s.y + s.dy);
+    if (s.x < -226) { s.dx = -s.dx; s.x = -452 - s.x; }
+    if (s.x > 226) { s.dx = -s.dx; s.x = 452 - s.x; }
+    return 1;
+  }
+
+  // --- $010A02 : anticipation -------------------------------------------------
+  anticipe() {
+    const A = this.A, P = this.P;
+    this.patrouille();
+    if (!(P.dy > 0)) return;
+    if (!(P.y > 1500 - A.seuil_reaction)) return;
+    if (this.etatJeu !== ETAT_JEU.JEU) return;
+    this.etatAdv = ETAT_ADV.POURSUIT;
+    this.sim = { x: P.x, y: P.y, dx: P.dx, dy: P.dy };
+    this.sim.x = w16(this.sim.x + this.alea(-A.erreur_visee, A.erreur_visee));
+    for (let n = A.pas_simulation; n > 0; n--) if (!this.simPas()) break;
+  }
+
+  // --- $010AB6 : poursuite ----------------------------------------------------
+  // La simulation continue d'avancer d'un pas par image : la cible suit.
+  poursuit() {
+    const A = this.A;
+    this.xN = w16(this.xAv + borner(-A.pas_gauche, this.sim.x - this.xAv, A.v_attaque));
+    this.yN = w16(this.yAv + borner(-A.pas_avant, this.sim.y - this.yAv, A.pas_arriere));
+    if (this.xAv === this.xN && this.yAv === this.yN) {
+      // Arrivee. La cible est retenue, et le point simule devient le point
+      // d'ARMEMENT : decale de la dispersion, qui est donc le vecteur de frappe.
+      this.etatAdv = ETAT_ADV.FRAPPE;
+      this.cibleX = this.sim.x; this.cibleY = this.sim.y;
+      this.sim.x = w16(this.sim.x + this.alea(A.disp_x_min, A.disp_x_max));
+      this.sim.y = w16(this.sim.y + this.alea(A.disp_y_min, A.disp_y_max));
+      this.bornerSim();
+      this.xN = this.xAv; this.yN = this.yAv;
+    } else {
+      this.simPas();
+    }
+  }
+
+  // --- $010BCE : frappe -------------------------------------------------------
+  // La raquette recule vers le point d'armement ; quand le palet va atteindre
+  // la cible, elle SAUTE sur la cible en une image. Sa vitesse, egale a son
+  // deplacement, devient enorme : c'est cela qui transmet la puissance.
+  frappe() {
+    const A = this.A, P = this.P;
+    if (P.y + P.dy >= this.cibleY) {
+      this.xN = this.cibleX; this.yN = this.cibleY;
+      this.etatAdv = ETAT_ADV.RECENTRE;
       return;
     }
+    this.xN = w16(this.xAv + borner(-A.v_defense, this.sim.x - this.xAv, A.v_defense));
+    this.yN = w16(this.yAv + borner(-A.pas_frappe_y, this.sim.y - this.yAv, A.pas_frappe_y));
+  }
 
-    const avant = this.palet.y;
-    this.avancerPalet(this.palet, surRebond);
-    this.ia();
-
-    // Contact avec une raquette : le palet traverse sa ligne et l'ecart en X
-    // est dans la demi-largeur.
-    const r = this.adversaire, j = this.joueur;
-    if (this.palet.dy > 0 && avant <= r.y && this.palet.y >= r.y) {
-      if (Math.abs(this.palet.x - r.x) <= div(r.largeur, 2)) {
-        this.collision(this.palet, r);
-        this.contact = 'adversaire';
-      }
-    } else if (this.palet.dy < 0 && avant >= j.y && this.palet.y <= j.y) {
-      if (Math.abs(this.palet.x - j.x) <= div(j.largeur, 2)) {
-        this.collision(this.palet, j);
-        this.contact = 'joueur';
-      }
+  // --- $010D44 : service de l'adversaire -------------------------------------
+  service() {
+    const A = this.A;
+    this.patrouille();
+    if (--this.compteService !== 0) return;
+    this.compteService = 30;
+    if (this.idx === BEJIN) {
+      // L'indice sonore : le son joue depend du bit qui decide la direction.
+      this.bejinB2 = this.rand() & 1;
+      this.bejinB4 = this.rand() & 1;
+      this.etatAdv = ETAT_ADV.RECENTRE;
+      this.son(2, this.bejinB4);
+      // RECONSTRUCTION : l'original lance une animation ($195BE) dont la fin
+      // fait passer le jeu a l'etat 6. On y passe directement.
+      this.etatJeu = ETAT_JEU.LANCER_BEJIN;
+      return;
     }
-
-    // Point marque : le palet sort par un fond.
-    if (this.palet.y > k.y_fond) { this.scores[0]++; this.apresPoint(); }
-    else if (this.palet.y < 0) { this.scores[1]++; this.apresPoint(); }
-  }
-
-  apresPoint() {
-    this.enJeu = false;
-    this.etat = ETAT.SERVICE;
-    // L'ivresse de Lexan : apres un point, a pile ou face, et uniquement lui.
-    if (this.table[this.index].nom === 'Lexan' && Math.random() < 0.5) {
-      this.lexanBoit(this.adversaire);
-      this.ivresses = (this.ivresses || 0) + 1;
+    this.etatAdv = ETAT_ADV.FRAPPE_SERVICE;
+    this.cibleX = 0; this.cibleY = 1205;
+    if (this.idx === BIFF) {
+      // Biff s'adapte au score : plus le joueur mene, plus il sert fort.
+      const k = borner(-10, this.s1 - this.s0, 10) + 10;
+      this.sim.x = w16(div(w16(A.cible_x_max * k), 20));
+      if (this.rand() & 1) this.sim.x = -this.sim.x;
+      this.sim.y = w16(div(w16((A.cible_y_max - A.cible_y_min) * k), 20) + A.cible_y_min + 1205);
+    } else {
+      this.sim.x = this.alea(A.cible_x_min, A.cible_x_max);
+      this.sim.y = w16(this.alea(A.cible_y_min, A.cible_y_max) + 1205);
     }
+    this.bornerSim();
   }
 
-  iaAttente() {
-    this.adversaire.frappe = 1;
-    this.recentre(this.adversaire);
-  }
-
-  // RECONSTRUCTION. Le repartiteur 0x010EAA aiguille sur $1B598 et le
-  // tableau des etats est etabli (voir PHYSICS.md), mais les TRANSITIONS
-  // entre anticipation, poursuite et recentrage ne sont pas lues dans le
-  // code. Celles-ci sont les miennes, choisies pour etre coherentes avec
-  // les routines transcrites. A remplacer par la vraie logique le jour ou
-  // elle sera lue.
-  ia() {
-    const r = this.adversaire;
-    this.iaEtat(r);
-    this.contraindre(r);
-  }
-
-  iaEtat(r) {
-    switch (this.etat) {
-      case ETAT.SERVICE:
-      case ETAT.ANTICIPE: {
-        r.frappe = 1;
-        const c = this.anticipe(r, this.palet);
-        if (c) { this.cible = c; this.etat = ETAT.POURSUIT; }
-        else this.patrouille(r);
-        break;
-      }
-      case ETAT.POURSUIT: {
-        r.frappe = 1;
-        if (this.palet.dy <= 0) { this.etat = ETAT.RECENTRE; break; }
-        const f = this.poursuit(r, this.cible);
-        if (f) { this.frappeVers = f; this.etat = ETAT.FRAPPE_A; }
-        break;
-      }
-      case ETAT.FRAPPE_A: {
-        const avant = { x: r.x, y: r.y };
-        this.frappe(r, this.frappeVers);
-        // L'etat 6 est atteint « arrive a destination » (PHYSICS.md).
-        if ((r.x === avant.x && r.y === avant.y) || this.palet.dy <= 0)
-          this.etat = ETAT.RECENTRE;
-        break;
-      }
-      case ETAT.RECENTRE:
-        r.frappe = 1;
-        this.recentre(r);
-        if (this.palet.dy > 0) this.etat = ETAT.ANTICIPE;
-        break;
-      default:
-        this.etat = ETAT.ANTICIPE;
+  // --- $010C7C : frappe de service -------------------------------------------
+  frappeService() {
+    const A = this.A;
+    if (this.sim.x === this.xAv && this.sim.y === this.yAv) {
+      this.xN = this.cibleX; this.yN = this.cibleY;
+      this.etatAdv = ETAT_ADV.RECENTRE;
+      return;
     }
+    this.xN = w16(this.xAv + borner(-A.v_defense, this.sim.x - this.xAv, A.v_defense));
+    this.yN = w16(this.yAv + borner(-A.pas_frappe_y, this.sim.y - this.yAv, A.pas_frappe_y));
+  }
+
+  // =========================================================================
+  //  LE POINT — $00D4D4
+  // =========================================================================
+  score() {
+    if (this.etatJeu !== ETAT_JEU.JEU) return;
+    const P = this.P;
+    if (P.y <= 0) this.pointAdversaire();
+    else if (P.y >= 1500) this.pointJoueur();
+    else return;
+    this.serveur = this.serveur ? 0 : 1;       // le service alterne
+    this.etatJeu = ETAT_JEU.POINT;
+    this.etatAdv = ETAT_ADV.RECENTRE;
+    if (this.serveur) this.nerualCopie = 1;
+  }
+
+  // $00D3F4 : le palet est passe derriere le joueur. Sa vitre se brise.
+  pointAdversaire() {
+    this.s0++;
+    if (this.s0 === 15) this.fin = 1;
+    else if (this.s0 === 1 || (this.rand() & 1)) this.lexanBoit();   // $110BA
+    this.briserVitre(true);
+  }
+
+  // $00D468 : le palet est passe derriere l'adversaire.
+  pointJoueur() {
+    this.s1++;
+    if (this.s1 === 15) this.fin = 2;
+    this.briserVitre(false);
+  }
+
+  // --- $0110BA : l'ivresse de Lexan ------------------------------------------
+  lexanBoit() {
+    if (this.idx !== LEXAN) return;
+    const r = this.A;
+    const d = (v, num) => { const p = v * num; return p >= 0 ? div(p, 100) : -div(-p, 100); };
+    for (const c of ['reflex_x', 'reflex_y', 'accel_x', 'accel_y', 'reflex_x2', 'reflex_y2',
+                     'vr_droite', 'v_attente_x', 'v_attente_y', 'vr_pres',
+                     'pas_gauche', 'v_attaque', 'pas_arriere', 'pas_avant',
+                     'v_defense', 'pas_frappe_y']) r[c] = d(r[c], 82);
+    r.x_min = d(r.x_min, 107); r.x_max = d(r.x_max, 107);
+    r.erreur_visee = d(r.erreur_visee, 105);
+    this.ivresses++;
+  }
+
+  // =========================================================================
+  //  LA VITRE — $00F23A (depart), $00F288 (pres), $00F336 (loin)
+  // =========================================================================
+  // Les eclats suivent toujours la meme trajectoire. C'est l'ECHELLE du dessin
+  // qui depend de la vitesse du palet a l'impact : plus le tir est violent,
+  // plus la vitre vole en grands morceaux.
+  briserVitre(pres) {
+    const P = this.P;
+    // $11586 : fracas en deux temps au-dela de 150, choc sourd en deca.
+    this.son(1, (P.dy > 150 || P.dy < -150) ? 2 : 3);
+    const echelle = pres ? div(150 - P.dy, 4) : div(P.dy + 150, 8);
+    this.vitre = {
+      pres, echelle,
+      cx: this.projeterX(P.x, P.y),
+      cy: pres ? 200 : 67,
+      eclats: this.m.vitre.eclats.map((e) => ({ ox: 0, oy: 0, vx: e.vx, vy: e.vy0, lignes: e.lignes })),
+    };
+  }
+
+  vitreAnime() {
+    if (this.etatJeu !== ETAT_JEU.POINT || !this.vitre) return;
+    let vivant = 0;
+    for (const e of this.vitre.eclats) {
+      e.ox = w16(e.ox + (e.vx >> 3));
+      e.oy = w16(e.oy + (e.vy >> 3));
+      e.vy += 12;                           // gravite
+      if (e.oy < 150) vivant = 1;
+    }
+    if (vivant) return;
+    // $00F3FE : fin de l'animation.
+    this.vitre = null;
+    if (this.s0 === 15 || this.s1 === 15) this.etatJeu = ETAT_JEU.FIN;
+    else this.etatJeu = this.serveur ? ETAT_JEU.RETOUR_JOUEUR : ETAT_JEU.RETOUR_ADV;
+  }
+
+  // =========================================================================
+  //  PROJECTION
+  // =========================================================================
+  // $DB9C. Centre confirme sur l'image du terrain, a chaque ligne.
+  projeterX(x, y) { return div(x * 411, y + 643) + 160; }
+
+  // $DBC2. Le premier argument est une HAUTEUR (site d'appel 0x00DC58).
+  projeterY(hauteur, profondeur) {
+    const t = div(profondeur * 207, profondeur + 970);
+    return (193 - t) - ((hauteur * (164 - t)) >> 9);
   }
 }

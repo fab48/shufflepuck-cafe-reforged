@@ -227,7 +227,7 @@ def main():
               ('pas_frappe_y', 0x38), ('disp_x_min', 0x3a), ('disp_x_max', 0x3c),
               ('disp_y_min', 0x3e), ('disp_y_max', 0x40), ('cible_x_min', 0x42),
               ('cible_x_max', 0x44), ('cible_y_min', 0x46), ('cible_y_max', 0x48),
-              ('erreur_visee', 0x4a), ('seuil_reaction', 0x4e),
+              ('erreur_visee', 0x4a), ('tremblement', 0x4c), ('seuil_reaction', 0x4e),
               ('pas_simulation', 0x50)]
     mot = lambda o: struct.unpack_from('>h', ram, o)[0]
     table = []
@@ -245,6 +245,29 @@ def main():
     for champ, off in CHAMPS[1:9]:
         joueur[champ] = mot(0x19CF4 + off)
     manifeste['joueur'] = joueur
+
+    # La vitre : un cadre de fissure et 13 eclats, traces en lignes par
+    # 0x00F164. Enregistrements de 14 octets a $19B04 (le cadre) et $19B12
+    # (les eclats) : +0 pointeur vers des paires d'indices de sommets
+    # terminees par un second indice nul, +4 vitesse X, +6 vitesse Y
+    # initiale. Les sommets sont a $19BC8, deux mots chacun.
+    def paires(p):
+        out = []
+        while ram[p + 1] != 0:
+            out.append([ram[p], ram[p + 1]])
+            p += 2
+        return out
+    enr = []
+    for k in range(14):
+        a = 0x19B04 + 14 * k
+        enr.append({'lignes': paires(struct.unpack_from('>L', ram, a)[0]),
+                    'vx': mot(a + 4), 'vy0': mot(a + 6)})
+    n = 1 + max(max(i, j) for e in enr for i, j in e['lignes'])
+    manifeste['vitre'] = {
+        'cadre': enr[0]['lignes'],
+        'eclats': enr[1:],
+        'sommets': [[mot(0x19BC8 + 4 * i), mot(0x19BC8 + 4 * i + 2)] for i in range(n)],
+    }
     print('  table   %-12s %d adversaires : %s'
           % ('parametres', len(table), ', '.join(b['nom'] for b in table)))
 

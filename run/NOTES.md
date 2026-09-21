@@ -80,7 +80,7 @@ face (BPB : 1 tête). Sans effet — un lecteur double face lit du simple face.
 `work/disks/disk1.stx` et `disk2.stx` : copies sous noms explicites, pour en finir
 avec l'inversion des noms courts 8.3 (`SHUFFL~2` = disquette 1, `SHUFFL~1` = disquette 2)
 qui est un piège à erreurs. Les originaux restent intacts dans le dossier d'archive.
-Le dossier `work/` n'est pas versionné.
+Le dossier `work/` n'est pas versionné, sauf `work/assets/`.
 
 ## Ne jamais précharger la disquette 2 dans le lecteur B
 

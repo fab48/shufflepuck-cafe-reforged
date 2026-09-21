@@ -1175,3 +1175,193 @@ une sonorité YM2149 et la jouer aux 22 hauteurs tabulées ci-dessus — ou synt
 l'équivalent.
 
 La musique de titre numérisée, elle, relève d'un autre mécanisme, non étudié.
+
+---
+
+# La boucle de jeu complète — corrections du 21 septembre 2026
+
+Jusqu'ici les routines étaient transcrites **isolément**. Tout ce qui les
+reliait avait été reconstruit à l'intuition dans le prototype web, et c'est
+précisément ce qui ne se jouait pas comme l'original. Tout ce qui suit a été
+lu dans le code.
+
+## L'ordre d'une image (`0x00DAA4`)
+
+```
+raquette du joueur   $FD38 -> $FB7A
+IA                   $10EAA
+palet                $1034C   repartiteur sur l'etat du jeu $1B594
+score / vitre        $D4D4
+```
+
+## La détection de collision — elle était inventée
+
+**Raquette du joueur (`0x010096`).** On compare les positions de l'image
+*précédente* (position − vitesse) pour savoir de quel côté du palet se trouvait
+la raquette, puis on teste le franchissement **avec une marge de 24** :
+
+```
+cote   = (palet.y - palet.dy) > (joueur.y - joueur.vy)
+touche = cote ? palet.y - 24 < joueur.y  :  palet.y + 24 > joueur.y
+si touche et COLLISION(joueur) :
+    palet.y = joueur.y +/- 24        ; le palet est repose contre la raquette
+    si palet.y > 300 et palet.dy < 5 : palet.dy = 5
+```
+
+**Raquette adverse (`0x0101D0`)** — asymétrique, sans marge :
+
+```
+si (adv.y - adv.vy) > (palet.y - palet.dy) et adv.y <= palet.y et COLLISION(adv) :
+    palet.y = adv.y - 3 ;  palet.dy = min(palet.dy, -5)
+```
+
+**`COLLISION` (`0x00FEEC`) renvoie un booléen**, et son test en X est
+**balayé** : l'intervalle parcouru par le palet pendant l'image, en vitesse
+relative à la raquette, élargi de 24 (le rayon du palet), doit chevaucher la
+raquette. Ma version précédente testait un point fixe sans rayon — d'où les
+palets qui traversaient la raquette du joueur.
+
+## La réponse à la collision — une erreur d'arrondi
+
+Chaque terme passe **séparément** par `0x00FE9E` (`a·b/c` en 16 bits) :
+
+```
+dx = dx*reflex_x/D  +  vx*accel_x/D
+dy = vy*accel_y/D   -  dy*reflex_y/D
+```
+
+et non `(dx*reflex_x + vx*accel_x)/D`. En entiers, ce n'est pas la même chose.
+`D` n'est pas une constante : c'est la variable `$19CE8`, qui vaut 100.
+
+## Le palet ne sort jamais
+
+À la fin de chaque image, `palet.y` est borné à `[-18, 1500]`. C'est `$D4D4`
+qui constate qu'il est à un fond (`y <= 0` : point de l'adversaire,
+`y >= 1500` : point du joueur), passe le jeu à l'état 5 et fait **alterner**
+le service, quel que soit le marqueur.
+
+## Le service — pas de clic
+
+Les états 1 et 2 ramènent le palet au point de service (295 ou 1205) à
+±15 en X et ±60 en Y par image, puis le posent immobile. **On sert en frappant
+le palet.** Le bouton de la souris ne sert pas à servir : maintenu, il fait
+passer la raquette du joueur au second jeu de coefficients (`$19D0E`, posé
+dans `$FB7A`).
+
+## La raquette du joueur
+
+`Y` est borné à **`[0, 300]`**, pas autour de la ligne de service comme je
+l'avais mis.
+
+## L'IA — les états étaient mal numérotés
+
+Répartiteur `0x010F3A` :
+
+| État | Routine | `+$1A` |
+|---|---|---|
+| 0 | anticipation `0x10A02` | 1 |
+| 1 | poursuite `0x10AB6` | 1 |
+| 2 | **frappe** `0x10BCE` | 0 |
+| 3 | **service** `0x10D44` | 1 |
+| 4, 5 | immobile | — |
+| 6 | recentrage `0x1096C` | 1 |
+| 7 | **frappe de service** `0x10C7C` | 0 |
+
+Les routines ne déplacent pas la raquette : elles **proposent** une position
+(`$1AFCC`/`$1AFCE`) à partir de la position avant (`$1AFC8`/`$1AFCA`). Le
+répartiteur ensuite :
+
+1. ajoute un **tremblement** `alea(-t, t)` si la raquette a bougé, dans les
+   états 0, 1, 2, 3 et 7 — `t` est le champ `+$4C`, que je croyais inutilisé :
+   **Skip tremble de 10, Lexan de 5**, les autres pas du tout ;
+2. borne à `X ∈ ±(250 − largeur/2)` et **`Y ∈ [1200, 1500]`** — la seule
+   borne de la raquette adverse ; ma `contraindre()` sur la zone de patrouille
+   était fausse ;
+3. **pose la vitesse égale au déplacement réel** ;
+4. passe en recentrage si le palet s'éloigne.
+
+La vitesse de patrouille est **globale** (`$1AFB8`/`$1AFBA`), pas dans le bloc.
+
+### La frappe adverse est un bond
+
+À l'arrivée de la poursuite, la cible est retenue, et le point simulé devient
+un **point d'armement** décalé de la dispersion (`+$3A`…`+$40`). La raquette
+recule vers ce point ; quand `palet.y + palet.dy >= cible.y`, elle **saute sur
+la cible en une image**. Sa vitesse, égale à son déplacement, devient énorme :
+c'est cela qui transmet la puissance. La « dispersion » est donc le **vecteur
+de frappe** — c'est pourquoi l'éditeur des auteurs la nomme
+« gauche-droite / avant-arrière ».
+
+### La simulation s'arrête à l'entrée de la zone
+
+`0x1078E` fait avancer le palet simulé et **s'arrête dès que `Y > 1200`**.
+Pendant la poursuite, elle continue d'avancer d'un pas par image : la cible
+suit le palet.
+
+### Le service adverse (état 3)
+
+Patrouille, compte à rebours de 30 images, puis cible `(0, 1205)` et point
+d'armement tiré dans `+$42`…`+$48`. **Biff** le module par l'écart au score :
+`k = borner(-10, joueur - adversaire, 10) + 10`, armement `= +$44 · k / 20`.
+**Bejin** tire deux bits ; le son joué dépend de celui qui fixe la direction.
+
+### Nerual copie le joueur
+
+Après un point où le joueur reprend le service, sa **première frappe** est
+recopiée dans le bloc de Nerual (`0x010148`) : coefficients d'accélération,
+et vecteur de service (`+$42`…`+$48` ← vitesse de la raquette du joueur). La
+modification est durable.
+
+### Seul Lexan joue sur une copie
+
+`0x0106DC` : à 0-0, le bloc de Lexan est recopié dans une copie de travail
+(`0x1B5B6`), sur laquelle agit l'ivresse. Les autres adversaires utilisent
+directement la table.
+
+## Le générateur aléatoire (`0x00FD94`)
+
+```
+graine = graine * 0x41C64E6D + (graine >> 20) + 0x3039
+tirage = (graine >> 16) & 0x7FFF
+alea(min, max) = min + reste(tirage / (max - min + 1))
+```
+
+Avec `max < min` le diviseur est négatif et le reste, du signe du dividende,
+reste positif : **Skip et son `alea(34, 30)` tirent dans 34…36**. Ce n'est
+pas une division par −3 comme je l'avais écrit.
+
+## Les sons — une attribution était fausse
+
+| Routine | Séquence | Événement |
+|---|---|---|
+| `$1151C` | `0x100` près, **`0x101` si Y > 750** | **frappe de raquette** — même échantillon, plus grave au fond |
+| `$114E4` | `0x11A` | choc sur l'**obstacle** |
+| `$11586` | `0x102` si \|dy\| > 150, sinon `0x103` | vitre : fracas ou choc sourd |
+| `$115DE` | `0x200` / `0x201` | les deux services de Bejin |
+
+J'avais écrit que `0x11A` était la frappe. `0x0102C2`, qui l'appelle, est dans
+la routine de l'obstacle.
+
+## La vitre
+
+Treize éclats et un cadre de fissure, **tracés en lignes** (`0x00F164`),
+géométrie à `$19B04` / `$19B12` / `$19BC8`. Les éclats suivent toujours la
+même trajectoire (vitesse fixe, gravité +12, pas de 1/8). **C'est l'échelle du
+dessin qui dépend du tir** :
+
+```
+vitre du joueur  : echelle = (150 - dy) / 4,  centre (projX(palet), 200)
+vitre adverse    : echelle = (dy + 150) / 8,  centre (projX(palet), 67)
+```
+
+## Ce qui reste reconstruit dans le prototype
+
+- la valeur initiale de `$1B584` (qui sert en premier) ;
+- le passage à l'état 6 pour le lancer de Bejin, déclenché dans l'original par
+  la fin d'une animation ;
+- la cadence de 50 images par seconde, non mesurée ;
+- l'obstacle, non transcrit ;
+- la correspondance des neuf `.TC0` avec les neuf noms.
+
+`src/ia.c` et `src/shufflepuck.c` portent encore les versions précédentes
+de la détection et de l'IA : **`web/moteur.js` fait désormais foi.**
