@@ -20,6 +20,8 @@
 // La main est posee par le bas-gauche en (X, Y) ; la pointe de la craie est
 // en (X + 48, Y - 45).
 
+import { texte } from './fonte.js';
+
 const LARG = 112, HAUT = 31;              // le tableau : sprite 1, pose en (0, 30)
 
 export class Robot {
@@ -57,23 +59,8 @@ export class Robot {
     this.texte(g, this.mo.A.nom, 5, 20);         // +$52 du bloc, $14FA4 (5, 20)
   }
 
-  // $14FA4 : une chaine, pixel par pixel. Seuls les pixels allumes du glyphe
-  // sont ecrits (couleur 15) ; le fond reste. Le y est la ligne du HAUT.
-  texte(g, chaine, x, y) {
-    const F = this.m.fonte;
-    g.fillStyle = this.c15;
-    for (const ch of chaine) {
-      const gl = F.glyphes[ch];
-      const l = gl ? gl.l : 0;
-      if (gl) {
-        gl.p.forEach((ligne, dy) => {
-          for (let dx = 0; dx < ligne.length; dx++)
-            if (ligne[dx] === '1') g.fillRect(x + dx, y + dy, 1, 1);
-        });
-      }
-      x += (l || 3) + F.espacement;              // espace : 3 pixels
-    }
-  }
+  // $14FA4, en couleur 15.
+  texte(g, chaine, x, y) { texte(g, this.m.fonte, chaine, x, y, this.c15); }
 
   // $00DFEC : l'abscisse du n-ieme baton. Groupes de cinq, 18 px par groupe,
   // 4 px par baton ; le cinquieme, en diagonale, part de 16 px plus a gauche.
