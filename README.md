@@ -38,9 +38,16 @@ releases it. **Space** opens the original menu:
 | `robot` | only against **Dc3**, the training robot: every one of its parameters |
 
 Right-click closes a menu. In a dialog, drag the sliders, then **SET-IT**
-to keep or **CANCEL** to undo. The banner has a full-screen button and a
-sound toggle (`?muet` in the address starts muted, `?debug` shows the engine
-state).
+to keep or **CANCEL** to undo. The banner has a full-screen button, a mouse
+sensitivity slider and a sound toggle (`?muet` in the address starts muted,
+`?debug` shows the engine state). On the welcome screen, a click skips the
+music, then the disk loading.
+
+Modern mice are far more sensitive than the ST's ball mouse, and the game's
+collision is swept: a paddle flicked at full speed covers half the table in
+one frame. The game therefore asks the browser for raw mouse movement (no OS
+acceleration, Chrome and Edge) and scales it by the slider, identically on
+both axes, as the original does. Everything after that is the 68000's.
 
 ## What was done
 
