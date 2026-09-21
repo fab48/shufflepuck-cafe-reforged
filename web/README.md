@@ -7,7 +7,7 @@ centrale, vérifiable.
 ## Lancer
 
 ```bash
-python -m http.server 8731 --directory web
+python -m http.server 8731 --directory D:projetsshufflepuckweb
 ```
 
 puis <http://localhost:8731>. Cliquer sur l'écran capture la souris —
