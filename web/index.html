@@ -25,17 +25,17 @@
   h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
   h1 span { color: var(--faible); font-weight: 400; }
   #bandeau {
-    display: flex; gap: 8px 18px; align-items: center; flex-wrap: wrap;
+    display: flex; gap: 8px; align-items: center; justify-content: space-between;
     background: var(--bandeau); border: 1px solid var(--trait); border-radius: 6px;
     padding: 8px 12px; font-size: 12px; min-height: 38px;
   }
-  #bandeau .consigne { flex: 1 1 320px; }
-  #bandeau kbd {
-    font: inherit; border: 1px solid var(--trait); border-bottom-width: 2px;
-    border-radius: 3px; padding: 0 4px; background: var(--fond);
-  }
-  #bandeau .score { color: var(--accent); font-weight: 600; }
   #cadre { line-height: 0; border: 1px solid var(--trait); background: #000; }
+  /* Plein ecran : l'image garde ses proportions 320 x 200, bandes noires autour. */
+  #cadre:fullscreen {
+    width: 100vw; height: 100vh; border: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #cadre:fullscreen canvas { width: min(100vw, 160vh); height: auto; }
   canvas {
     display: block; width: 100%; height: auto; image-rendering: pixelated;
     cursor: pointer;
@@ -58,10 +58,7 @@
 <h1 class="large">Shufflepuck Café <span>— Atari ST, 1989, rétro-ingénierie</span></h1>
 
 <div id="bandeau" class="large">
-  <span class="consigne" id="consigne">Chargement…</span>
-  <span class="note" id="progression"></span>
-  <span class="score" id="score"></span>
-  <button id="auBar" hidden>retour au bar</button>
+  <button id="plein">plein écran</button>
   <button id="son" aria-pressed="false">son : oui</button>
 </div>
 
@@ -182,30 +179,9 @@ function viderSons() {
 function partie(idx) { moteur.nouvellePartie(idx); anim.demarrer(idx); robot.reinitialiser(); }
 
 // --- les ecrans : accueil, bar, partie --------------------------------------
-const consigne = document.getElementById('consigne');
-const scoreEl = document.getElementById('score');
-const auBar = document.getElementById('auBar');
 let ecranCourant = null, debutEcran = 0;
-const CONSIGNES = {
-  presents: '',
-  titre: 'Chargement du café…',
-  disquette: 'Cliquez pour insérer la disquette 2.',
-  inseree: 'Disquette 2 insérée.',
-  lecture: 'Lecture de la disquette…',
-  rideau: '',
-  bar: 'Choisissez votre adversaire : cliquez sur un client du bar. ' +
-       'La créature en bas à droite réagit aussi.',
-  partie: 'Cliquez sur la table pour prendre la souris · frappez le palet pour servir · ' +
-          'bouton maintenu = coup appuyé · <kbd>Espace</kbd> menu et réglages · ' +
-          '<kbd>Échap</kbd> lâcher la souris',
-  menu: 'Menu : survolez puis cliquez une entrée · clic droit ou clic en dehors = fermer · ' +
-        'dans une fenêtre, faites glisser les curseurs, puis SET-IT (garder) ou CANCEL.',
-};
 function allerA(e) {
   ecranCourant = e; debutEcran = performance.now();
-  consigne.innerHTML = CONSIGNES[e];
-  auBar.hidden = e !== 'partie';
-  scoreEl.textContent = '';
   if (e === 'bar') bar.entrer();
   if (menu) menu.fermer();
   if (e !== 'partie' && document.pointerLockElement) document.exitPointerLock();
@@ -327,9 +303,7 @@ async function ouvrirMenu() {
   couperSons();
   if (document.pointerLockElement) document.exitPointerLock();
   bouton = false;
-  consigne.innerHTML = CONSIGNES.menu;
   const etat = await menu.ouvrir();
-  consigne.innerHTML = CONSIGNES.partie;
   if (etat === 3) { allerA('bar'); return; }
   if (etat === 2 || moteur.fin) {
     // Sans remettre le tableau a zero : l'eponge efface les batons.
@@ -338,7 +312,12 @@ async function ouvrirMenu() {
   }
   moteur.reprendre();
 }
-auBar.onclick = () => allerA('bar');
+// Plein ecran : le cadre du jeu seul.
+const cadre = document.getElementById('cadre');
+document.getElementById('plein').onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else cadre.requestFullscreen().catch(() => {});
+};
 
 // --- rendu de la partie -----------------------------------------------------
 // --- primitives du ST : trait horizontal $17252, trait $16EBE, pave $17E78 ---
@@ -483,7 +462,6 @@ const nomAdv = Object.fromEntries(Object.entries(ETAT_ADV).map(([k, v]) => [v, k
 const nomJeu = Object.fromEntries(Object.entries(ETAT_JEU).map(([k, v]) => [v, k.toLowerCase()]));
 function ecrireInfos() {
   if (ecranCourant !== 'partie') return;
-  scoreEl.textContent = `${moteur.A.nom} ${moteur.s0} — ${moteur.s1} vous`;
   if (!DEBUG) return;
   const a = moteur.A, p = moteur.P;
   infos.innerHTML = [
@@ -594,12 +572,9 @@ function boucle(maintenant) {
 requestAnimationFrame(boucle);
 
 // --- le chargement, pendant les ecrans d'accueil ---------------------------
-const progEl = document.getElementById('progression');
 const aCharger = 8 + 2 * m.adversaires.length;
 let charges = 0;
-function progression() {
-  progEl.textContent = pret ? '' : `chargement ${Math.round(100 * charges / aCharger)} %`;
-}
+function progression() {}
 const compte = (p) => p.then((v) => { charges++; progression(); return v; });
 const json = (f) => fetch(A + f).then((r) => r.json());
 progression();
