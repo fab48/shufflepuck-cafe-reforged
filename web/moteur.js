@@ -500,17 +500,23 @@ export class Moteur {
   }
 
   // $00D3F4 : le palet est passe derriere le joueur. Sa vitre se brise.
+  // La reaction du personnage ($F998) suit le meme tirage que l'ivresse.
   pointAdversaire() {
     this.s0++;
-    if (this.s0 === 15) this.fin = 1;
-    else if (this.s0 === 1 || (this.rand() & 1)) this.lexanBoit();   // $110BA
+    if (this.s0 === 15) { this.evenements.push({ reaction: 4 }); this.fin = 1; }
+    else if (this.s0 === 1 || (this.rand() & 1)) {
+      this.evenements.push({ reaction: 3 });
+      this.lexanBoit();                                        // $110BA
+    } else this.evenements.push({ reaction: 0 });
     this.briserVitre(true);
   }
 
   // $00D468 : le palet est passe derriere l'adversaire.
   pointJoueur() {
     this.s1++;
-    if (this.s1 === 15) this.fin = 2;
+    if (this.s1 === 15) { this.evenements.push({ reaction: 1 }); this.fin = 2; }
+    else if (this.s1 === 1 || (this.rand() & 1)) this.evenements.push({ reaction: 2 });
+    else this.evenements.push({ reaction: 0 });
     this.briserVitre(false);
   }
 

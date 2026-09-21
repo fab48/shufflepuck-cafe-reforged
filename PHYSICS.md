@@ -1473,3 +1473,79 @@ que 14. Par leur place en mémoire — juste avant la table de `general`, comme
 chaque personnage a ses scripts juste avant sa table — ces scripts semblent
 être ceux d'Eneg, qui n'en reçoit aucun. Je ne tranche pas : le prototype
 suit le code et ignore les numéros de sprite hors de la banque.
+
+---
+
+# Cadence, robot du tableau, réactions — et une erreur de lecture corrigée
+
+## La cadence d'origine : 25 images par seconde, mesurée
+
+La boucle n'attend pas la VBL explicitement : chaque image se termine par
+l'échange d'écran (`$15AEA`, installé comme trap 5), qui bascule le tampon
+puis **attend une VBL**. La cadence dépend donc du temps de calcul.
+
+Mesure : `lexan_debut.sav` relancé dans Hatari, AVI enregistré à **chaque**
+VBL (50/s) pendant 20 s de partie. Sur 992 images, l'écran change **une VBL
+sur deux** dans l'immense majorité des cas (330 paliers de 2 VBL), avec
+quelques paliers de 3 (16,7/s) quand l'image est plus lourde. **Le jeu tourne
+à 25 images par seconde.** Le prototype, à 50, allait deux fois trop vite.
+
+L'ancienne capture `partie.avi` ne pouvait pas trancher : elle ne contient
+que l'écran-titre et le zoom d'introduction.
+
+## Le robot du tableau (`0x00E262`)
+
+Une main tenant une craie (sprite 0 de `sprites`) ou une éponge (sprite 27),
+pilotée par la machine à états `$18438`, en tête du rendu de chaque image :
+
+| état | |
+|---|---|
+| 0 | repos, cachée ; `$E182` compare scores réels et scores affichés |
+| 1 | glisse en X vers la colonne du prochain bâton, 5 px par image |
+| 2 | puis en Y vers la ligne (joueur à 10, adversaire à 21) |
+| 3 | trace le bâton : 3 pas de 2 px, ou 4 pas (+4, +1) pour le 5e en diagonale |
+| 4 | redescend jusqu'à Y = 90 |
+| 5 | sort par la gauche jusqu'à X = −60, puis se cache |
+| 6, 7 | l'éponge, aller puis retour, quand un score a **baissé** |
+
+Colonne du n-ième bâton (`$DFEC`) : `x = (n/5)·18 + 36`, puis `+4·(n%5)+1`, ou
+`−16` pour le cinquième. La pointe de la craie est en `(X + 48, Y − 45)`.
+
+Les bâtons sont tracés dans le **décor** (`$1B52E`) : ils persistent.
+L'éponge recopie le tableau vierge par bandes de 4 lignes. La routine de copie
+de blocs `$17A5A` prend la **source en premier** — établi par cohérence entre
+trois appels.
+
+Le tableau lui-même est le sprite 1 de `sprites` (112×31), posé en (0, 30),
+avec « Visiteur » en (5, 9) et le nom de l'adversaire en (5, 20).
+
+## Les réactions et les voix (`0x00F998`)
+
+Chaque adversaire a une table de cinq scripts, lancés en mode 0 au point :
+0 point quelconque, 1 le joueur gagne, 2 le joueur marque, 3 l'adversaire
+marque, 4 l'adversaire gagne. Le tirage est **le même** que celui de
+l'ivresse de Lexan.
+
+Les fonctions de rappel de ces scripts jouent des sons (`$112C0`), sous deux
+formes seulement : une suite de sons fixes, ou un tirage `rand % 3` entre trois
+répliques. L'exporteur les **reconnaît au désassembleur** plutôt que de les
+recopier : 20 fonctions reconnues ; les autres sont exactement celles
+transcrites à la main.
+
+## Erreur corrigée : les index 4 et 5
+
+J'avais lu les cas de `0x00D786` **dans l'ordre du listing**, sans décoder sa
+table de saut. Décodée, elle envoie **l'index 4 (Nerual) sur `general`** et
+**l'index 5 (Eneg) sur `nerual`**. La « contradiction » signalée plus haut
+entre `D786`, `F522` et `F998` n'existait pas : les trois routines sont
+cohérentes, c'était ma lecture qui ne l'était pas. Deux personnages étaient
+inversés dans le prototype.
+
+## Un désaccord ouvert : la vitre du fond
+
+D'après le code, les éclats de la vitre du fond sont tracés **après** le
+personnage : leur script est dans la liste « derrière » (`$1AF28`), qui passe
+après la liste de fond et après le corps, et la routine de ligne (`$16EBE`)
+écrit ses pixels sans condition. Ils passent donc **devant** le personnage,
+sous les raquettes, coupés au bord de la table. Fabien se souvient de les voir
+passer derrière. À vérifier sur une capture d'un point marqué.

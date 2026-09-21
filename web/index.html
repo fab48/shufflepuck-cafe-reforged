@@ -86,6 +86,7 @@
 <script type="module">
 import { Moteur, ETAT_ADV, ETAT_JEU } from './moteur.js';
 import { Animations } from './animation.js';
+import { Robot } from './robot.js';
 
 const ecran = document.getElementById('ecran');
 const ctx = ecran.getContext('2d');
@@ -165,7 +166,11 @@ async function jouerSequence(n, s) {
 // --- moteur ---------------------------------------------------------------
 const moteur = new Moteur(m);
 const anim = new Animations(m, moteur);
-function partie(idx) { moteur.nouvellePartie(idx); anim.demarrer(idx); }
+const robot = new Robot(m, moteur, interfaceImg, interfaceJson, palette[15], palette[0]);
+// RECONSTRUCTION : a chaque nouvelle partie on repart d'un tableau vierge ;
+// dans l'original, l'eponge efface les points de la partie precedente.
+function partie(idx) { moteur.nouvellePartie(idx); anim.demarrer(idx); robot.reinitialiser(); }
+window.jeu = { moteur, anim, robot, partie };      // pour le debogage, depuis la console
 partie(0);
 
 const choix = document.getElementById('choix');
@@ -304,6 +309,10 @@ function dessiner() {
   const [x0] = anim.placer(0);
   sprite(advImg[moteur.idx], j, 0, x0, 67);                // le corps, pied a 67
 
+  // $00E262 : le robot du tableau, en tete du rendu de l'image.
+  robot.image();
+  robot.dessiner(ctx);
+
   // $00F860 : les calques du personnage, decoupes au bord de la table.
   decoupe(68);
   for (const s of anim.fond) anim.jouer(s, spritePerso);
@@ -351,9 +360,12 @@ function ecrireInfos() {
     `${m.table_adversaires[moteur.idx].nom} ${moteur.s0} — ${moteur.s1} vous`;
 }
 
-// RECONSTRUCTION : la cadence d'origine n'est pas mesuree. 50 images par
-// seconde, la frequence de la VBL europeenne.
-const PERIODE = 1000 / 50;
+// La cadence d'origine, MESUREE : l'echange d'ecran ($15AEA, trap 5) attend
+// une VBL, et la boucle ne tient pas en une seule. Sur 20 s de partie
+// enregistrees a chaque VBL dans Hatari, l'ecran change une VBL sur deux dans
+// l'immense majorite des cas : 25 images par seconde, avec des images a
+// 3 VBL (16,7/s) quand le dessin est plus lourd. On garde 25.
+const PERIODE = 1000 / 25;
 let dette = 0, precedent = performance.now();
 function boucle(maintenant) {
   dette += maintenant - precedent;
@@ -367,10 +379,11 @@ function boucle(maintenant) {
     for (const e of moteur.evenements) {
       if (e.ecrire) anim.mem.ecrire(e.ecrire[0], e.ecrire[1]);
       if (e.lancer) anim.lancer(e.lancer, e.mode);
+      if (e.reaction !== undefined) anim.reagir(e.reaction);
     }
-    for (const s of moteur.sons) jouerSequence(s.banque, s.sequence);
     dx = 0; dy = 0;
-    dessiner();
+    dessiner();                      // les scripts d'animation jouent des voix
+    for (const s of moteur.sons) jouerSequence(s.banque, s.sequence);
   }
   ecrireInfos();
   requestAnimationFrame(boucle);

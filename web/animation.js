@@ -35,7 +35,9 @@ export class Memoire {
 }
 
 // Table de placement de chaque personnage, telle que 0x00D786 la choisit.
-const TABLES = [0x188A8, 0x18A42, 0x18CA8, 0x18FC2, 0x19514, 0x1926E, 0x19708, 0x198C4, 0x199FC];
+// Attention : sa table de saut envoie l'index 4 sur « general » ($1926E) et
+// l'index 5 sur « nerual » ($19514), pas dans l'ordre du listing.
+const TABLES = [0x188A8, 0x18A42, 0x18CA8, 0x18FC2, 0x1926E, 0x19514, 0x19708, 0x198C4, 0x199FC];
 
 export class Animations {
   constructor(m, moteur) {
@@ -75,8 +77,27 @@ export class Animations {
 
   appeler(f, slot) {
     const r = this.rappels[f];
-    if (!r) { (this.inconnus ||= new Set()).add(f); return 0; }
-    return r(slot);
+    if (r) return r(slot);
+    // Les rappels qui ne font que jouer des sons, reconnus a l'export.
+    const s = this.m.rappels_sons[f];
+    if (s) {
+      const ids = s.hasard ? [s.sons[this.moteur.rand() % 3]] : s.sons;
+      for (const id of ids) this.son(id);
+      return 0;
+    }
+    (this.inconnus ||= new Set()).add(f);
+    return 0;
+  }
+
+  // $112C0 : un son, $Xnn = banque X, sequence nn.
+  son(id) { this.moteur.sons.push({ banque: id >> 8, sequence: id & 0xFF }); }
+
+  // $00F998 : la reaction du personnage a un point, lancee en mode 0.
+  //   0 point quelconque, 1 le joueur gagne, 2 le joueur marque,
+  //   3 l'adversaire marque, 4 l'adversaire gagne.
+  reagir(n) {
+    const s = this.m.adversaires[this.idx].reactions[n];
+    if (s) this.lancer(s, 0);
   }
 
   // $00F778 : dessine l'image courante, puis avance. Renvoie 0 si le script
@@ -156,6 +177,10 @@ export class Animations {
       0xF0BE: () => { M.ecrire(0x190C0, regard(-1, 10, 11, 12, 13)); return 0; },
       0xF132: attente(0x1958E),                                                   // Bejin
       0xF152: () => { mo.etatJeu = 6; return 0; },      // fin du service de Bejin : le palet part
+      // $EDBE / $EDE0 : la voix de fin de partie, a 15 points.
+      // RECONSTRUCTION : $1B596, qui peut l'empecher, est suppose nul.
+      0xEDBE: () => { if (mo.s0 === 15) this.son(0x201); return 0; },
+      0xEDE0: () => { this.son(mo.s1 === 15 ? 0x201 : 0x200); return 0; },
     };
   }
 }
