@@ -125,7 +125,8 @@ int sp_son_rebond(int y)
 }
 
 /* ---- Donnees extraites de la table $19D14 (pas de 86 octets) -------------
- * Ordre etabli par le pointeur de nom en +$54, et NON par l'ordre du cafe.
+ * Ordre etabli par le pointeur de nom en +$52 (les quatre derniers octets
+ * du bloc de 86), et NON par l ordre du cafe.
  *
  * Ce bloc est GENERE automatiquement depuis le dump memoire du jeu par
  * tools/gen_table.py : aucune valeur n'est recopiee a la main.

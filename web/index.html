@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Shufflepuck — moteur</title>
+<style>
+  :root {
+    --fond: #101014; --texte: #d8d4cc; --faible: #8a867e;
+    --trait: #2a2a32; --accent: #d89040;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --fond: #f4f2ee; --texte: #1a1a1e; --faible: #6a665e;
+      --trait: #d8d4cc; --accent: #a05c10;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--fond); color: var(--texte);
+    font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+  h1 span { color: var(--faible); font-weight: 400; }
+  #cadre {
+    position: relative; line-height: 0;
+    border: 1px solid var(--trait); background: #000;
+  }
+  canvas {
+    display: block; width: min(960px, calc(100vw - 34px)); height: auto;
+    image-rendering: pixelated;
+  }
+  #voile {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.72); cursor: pointer;
+    color: #fff; font: 13px/1.6 ui-monospace, monospace; text-align: center;
+    padding: 16px;
+  }
+  #voile.parti { display: none; }
+  #infos {
+    width: min(960px, calc(100vw - 34px));
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px 18px; color: var(--faible); font-size: 12px;
+  }
+  #infos b { color: var(--texte); font-weight: 600; }
+  #barre { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+           width: min(960px, calc(100vw - 34px)); font-size: 12px; }
+  select, button {
+    font: inherit; background: transparent; color: var(--texte);
+    border: 1px solid var(--trait); border-radius: 4px; padding: 3px 8px;
+  }
+  button { cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); }
+  .note { color: var(--faible); font-size: 12px; max-width: 960px; }
+</style>
+</head>
+<body>
+
+<h1>Shufflepuck <span>— moteur retro-ingenierie, decors et sons d'origine</span></h1>
+
+<div id="barre">
+  <label>adversaire
+    <select id="choix"></select>
+  </label>
+  <button id="rejouer">rejouer</button>
+  <span id="score"></span>
+</div>
+
+<div id="cadre">
+  <canvas id="ecran" width="320" height="200"></canvas>
+  <div id="voile"><div>cliquer pour prendre la souris
+    <br><small>clic = service &middot; Echap = relacher</small></div></div>
+</div>
+
+<div id="infos"></div>
+
+<p class="note">
+  Le fond, les sprites et les sons viennent des disquettes d'origine. La
+  physique, l'IA et la projection sont transcrites du 68000. Les raquettes sont
+  dessinees en repere : leur sprite n'est pas encore identifie dans les banques.
+</p>
+
+<script type="module">
+import { Moteur, ETAT } from './moteur.js';
+
+const ecran = document.getElementById('ecran');
+const ctx = ecran.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const charger = (src) => new Promise((ok, ko) => {
+  const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src;
+});
+
+const A = 'assets/';
+const m = await (await fetch(A + 'manifeste.json')).json();
+const fond = await charger(A + m.ecrans.terrain.fichier);
+const interfaceJson = await (await fetch(A + 'sprites_interface.json')).json();
+const interfaceImg = await charger(A + interfaceJson.image);
+
+// Les sprites 3 a 13 de la banque « interface » sont le palet mis a l'echelle
+// en perspective, du plus grand (32x25, proche) au plus petit (16x4, loin).
+const PALET_PREMIER = 3, PALET_NOMBRE = 11;
+
+const advImg = [], advJson = [];
+for (let k = 0; k < m.adversaires.length; k++) {
+  const j = await (await fetch(A + `sprites_adv${k}.json`)).json();
+  advJson.push(j);
+  advImg.push(await charger(A + j.image));
+}
+
+// --- audio ----------------------------------------------------------------
+let audio = null;
+const tampons = new Map();
+async function prepareSon(nom) {
+  if (!audio) return null;
+  if (tampons.has(nom)) return tampons.get(nom);
+  const r = await fetch(A + nom);
+  const b = await audio.decodeAudioData(await r.arrayBuffer());
+  tampons.set(nom, b);
+  return b;
+}
+function jouer(tampon, gain = 0.5) {
+  if (!audio || !tampon) return;
+  const s = audio.createBufferSource();
+  const g = audio.createGain();
+  g.gain.value = gain;
+  s.buffer = tampon; s.connect(g); g.connect(audio.destination); s.start();
+}
+// Le rebond : UN echantillon, rejoue a vingt-trois hauteurs. On reproduit la
+// transposition avec playbackRate, exactement comme le ST changeait le
+// diviseur du Timer A.
+const bruitages = m.sons.bruitages;
+let rebondBase = null, rebondHzBase = 10000;
+function jouerRebond(sequence) {
+  if (!audio || !rebondBase) return;
+  const seq = bruitages.sequences[sequence];
+  if (!seq || !seq.length) return;
+  const s = audio.createBufferSource();
+  const g = audio.createGain();
+  g.gain.value = 0.35;
+  s.buffer = rebondBase;
+  s.playbackRate.value = seq[0].frequence / rebondHzBase;
+  s.connect(g); g.connect(audio.destination); s.start();
+}
+
+// --- moteur ---------------------------------------------------------------
+const moteur = new Moteur(m);
+
+const choix = document.getElementById('choix');
+m.table_adversaires.forEach((a, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = a.nom;
+  choix.appendChild(o);
+});
+choix.value = 0;
+choix.onchange = () => moteur.reinitialiser(+choix.value);
+document.getElementById('rejouer').onclick = () => moteur.reinitialiser(+choix.value);
+
+// --- souris ---------------------------------------------------------------
+let dx = 0, dy = 0, servir = false;
+const voile = document.getElementById('voile');
+voile.onclick = async () => {
+  ecran.requestPointerLock();
+  if (!audio) {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    const b = bruitages.echantillons.find(e => e.fichier.endsWith('_2.wav'))
+           || bruitages.echantillons[0];
+    if (b) { rebondBase = await prepareSon(b.fichier); rebondHzBase = b.frequence; }
+  }
+};
+document.addEventListener('pointerlockchange', () => {
+  voile.classList.toggle('parti', document.pointerLockElement === ecran);
+});
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== ecran) return;
+  dx += e.movementX; dy += e.movementY;
+});
+document.addEventListener('mousedown', () => {
+  if (document.pointerLockElement === ecran) servir = true;
+});
+
+// --- rendu ----------------------------------------------------------------
+// La ligne de sol a une profondeur donnee, telle que la calcule $DBC2 avec une
+// hauteur nulle. La zone de jeu (Y de 295 a 1500) tombe entre les ordonnees
+// 145 et 68, ce qui correspond bien a la table peinte, dont le bord lointain
+// est mesure a l'ordonnee 62.
+const sol = (y) => moteur.projeterY(0, y);
+
+function raquette(r, couleur) {
+  const cx = moteur.projeterX(r.x, r.y);
+  const cy = sol(r.y);
+  const demi = Math.max(3, moteur.projeterX(Math.trunc(r.largeur / 2), r.y) - moteur.projeterX(0, r.y));
+  ctx.strokeStyle = couleur;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(cx + 0.5, cy + 0.5, demi, Math.max(2, demi * 0.38), 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function dessiner() {
+  ctx.drawImage(fond, 0, 0);
+
+  // l'adversaire, au fond
+  const ja = advJson[moteur.index % advJson.length];
+  const s0 = ja.sprites[0];
+  ctx.drawImage(advImg[moteur.index % advImg.length],
+                s0.x, s0.y, s0.w, s0.h,
+                160 - (s0.w >> 1), sol(moteur.k.y_fond) - s0.h + 6, s0.w, s0.h);
+
+  raquette(moteur.adversaire, '#b8442c');
+
+  raquette(moteur.joueur, '#e8d8a0');
+
+  // le palet, au sprite correspondant a sa profondeur, par-dessus
+  const p = moteur.palet;
+  const t = Math.min(1, Math.max(0, p.y / moteur.k.y_fond));
+  const idx = PALET_PREMIER + Math.min(PALET_NOMBRE - 1, Math.round(t * (PALET_NOMBRE - 1)));
+  const sp = interfaceJson.sprites[idx];
+  ctx.drawImage(interfaceImg, sp.x, sp.y, sp.w, sp.h,
+                moteur.projeterX(p.x, p.y) - (sp.w >> 1),
+                sol(p.y) - (sp.h >> 1), sp.w, sp.h);
+
+  raquette(moteur.joueur, '#e8d8a0');
+}
+
+const nom = (e) => ['anticipe','poursuit','arrive','frappe A','recentre','frappe B','service'][e];
+const infos = document.getElementById('infos');
+function ecrireInfos() {
+  const a = moteur.adversaire, p = moteur.palet;
+  infos.innerHTML = [
+    ['adversaire', moteur.table[moteur.index].nom],
+    ['etat', nom(moteur.etat)],
+    ['palet', `${p.x}, ${p.y}`],
+    ['vitesse', `${p.dx}, ${p.dy}`],
+    ['reflexion', `${a.reflex_x} / ${a.reflex_y}`],
+    ['acceleration', `${a.accel_x} / ${a.accel_y}`],
+    ['erreur de visee', a.erreur_visee],
+    ['ivresses', moteur.ivresses || 0],
+  ].map(([k, v]) => `<div>${k} <b>${v}</b></div>`).join('');
+  document.getElementById('score').textContent =
+    `${moteur.table[moteur.index].nom} ${moteur.scores[1]} — ${moteur.scores[0]} vous`;
+}
+
+// Le jeu d'origine tourne sur l'interruption VBL : 50 images par seconde.
+const PERIODE = 1000 / 50;
+let dette = 0, precedent = performance.now();
+function boucle(maintenant) {
+  dette += maintenant - precedent;
+  precedent = maintenant;
+  if (dette > 200) dette = 200;
+  while (dette >= PERIODE) {
+    dette -= PERIODE;
+    moteur.pas(dx, dy, servir);
+    for (const s of moteur.rebonds) jouerRebond(s);
+    dx = 0; dy = 0; servir = false;
+  }
+  dessiner();
+  ecrireInfos();
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+</script>
+</body>
+</html>
