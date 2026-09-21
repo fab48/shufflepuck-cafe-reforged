@@ -4442,6 +4442,10 @@
     ]
    }
   },
+  "disquettes": [
+   "Inserer le disque shufflepuck1 dans le lecteur 0.",
+   "Inserer le disque shufflepuck2 dans le lecteur 0."
+  ],
   "tableau": [
    [
     "Biff Raunch",

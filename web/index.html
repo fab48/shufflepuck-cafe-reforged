@@ -187,8 +187,10 @@ const scoreEl = document.getElementById('score');
 const auBar = document.getElementById('auBar');
 let ecranCourant = null, debutEcran = 0;
 const CONSIGNES = {
-  presents: 'Cliquez pour entrer au Shufflepuck Café.',
+  presents: '',
   titre: 'Chargement du café…',
+  disquette: 'Cliquez pour insérer la disquette 2.',
+  lecture: 'Lecture de la disquette…',
   rideau: '',
   bar: 'Choisissez votre adversaire : cliquez sur un client du bar. ' +
        'La créature en bas à droite réagit aussi.',
@@ -210,7 +212,7 @@ function allerA(e) {
 allerA('presents');
 
 function initAudio() {
-  if (audio) return;
+  if (audio) { if (audio.state === 'suspended') audio.resume(); return; }
   audio = new (window.AudioContext || window.webkitAudioContext)();
   sortie = audio.createGain();
   sortie.gain.value = muet ? 0 : 1;
@@ -237,6 +239,25 @@ function musique() {
   jouerSequence(0, m.bar.musique).then((t) => { musiqueFin = t; });
 }
 
+// Le navigateur garde le son suspendu jusqu'au premier geste : la musique
+// lancee sur la porte demarre au premier clic ou a la premiere touche.
+document.addEventListener('pointerdown', () => { if (audio) initAudio(); });
+document.addEventListener('keydown', () => { if (audio) initAudio(); });
+
+// CLIN D'OEIL, pas dans l'original a cet endroit : la boite est bien celle de
+// $13C9A (cadre $12B32 en (40, 100, 240, 20), message en couleur 15 en
+// (50, 108)), mais le bruit de lecteur est un enregistrement, pas un son du
+// jeu (tools/bruit_disquette.py).
+const DUREE_LECTURE = 3200;
+async function bruitDisquette() {
+  const buf = await tampon('bruit_disquette.wav');
+  const src = audio.createBufferSource();
+  const g = audio.createGain();
+  g.gain.value = 0.8;
+  src.buffer = buf; src.connect(g); g.connect(sortie);
+  src.start();
+}
+
 // Coordonnees ecran 320 x 200 d'un evenement souris.
 function coord(e) {
   const r = ecran.getBoundingClientRect();
@@ -251,8 +272,8 @@ function coord(e) {
 let dx = 0, dy = 0, bouton = false;
 ecran.addEventListener('mousedown', (e) => {
   initAudio();
-  if (ecranCourant === 'presents') { musique(); allerA('titre'); return; }
-  if (ecranCourant === 'titre' || ecranCourant === 'rideau') return;
+  if (ecranCourant === 'disquette') { allerA('lecture'); bruitDisquette(); return; }
+  if (['presents', 'titre', 'lecture', 'rideau'].includes(ecranCourant)) return;
   if (ecranCourant === 'bar') {
     const [x, y] = coord(e);
     const idx = bar.clic(x, y);
@@ -499,16 +520,26 @@ let musiqueFin = 0;
 // une VBL par pas (deduit du code, non mesure). Puis la palette d'INTBAR
 // ($1B55E) et le bar.
 let pasRideau = 0;
+// RECONSTRUCTION : l'original enchaine des la musique chargee ; ici, deux
+// secondes de couronnes.
+const DUREE_PRESENTS = 2000;
 
 function imageEcran() {
   if (ecranCourant === 'presents') {
-    // Le navigateur n'autorise le son qu'apres un geste : les couronnes
-    // attendent un clic, la ou l'original enchainait des la fin du chargement
-    // de la musique.
     ctx.drawImage(imgPresents, 0, 0);
+    if (performance.now() - debutEcran >= DUREE_PRESENTS) {
+      initAudio(); musique(); allerA('titre');
+    }
   } else if (ecranCourant === 'titre') {
     ctx.drawImage(imgTitre, 0, 0);
-    if (pret) { allerA('rideau'); pasRideau = 0; }
+    if (pret) allerA('disquette');
+  } else if (ecranCourant === 'disquette') {
+    ctx.drawImage(imgTitre, 0, 0);
+    menu.cadre(ctx, 40, 100, 240, 20);
+    menu.texte(ctx, m.menu.disquettes[1], 50, 108, 15);
+  } else if (ecranCourant === 'lecture') {
+    ctx.drawImage(imgTitre, 0, 0);
+    if (performance.now() - debutEcran >= DUREE_LECTURE) { allerA('rideau'); pasRideau = 0; }
   } else if (ecranCourant === 'rideau') {
     const i = pasRideau++, h = Math.max(0, i - 60);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 200);

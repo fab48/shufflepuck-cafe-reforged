@@ -464,6 +464,8 @@ def main():
         'obstacle': boite(0x1A502),
         'robot': boite(0x1A50E),
         'dialogues': dialogues,
+        # $13C9A : la demande de disquette, et ses deux messages ($13DB1, $13DE8).
+        'disquettes': [chaine(0x13DB1), chaine(0x13DE8)],
         # $1A520 : le tableau des maitres, 30 fiches de 14 octets (nom sur
         # 12, score au mot +$C), affiche par l'entree « scores » ($12684)
         # sur l'image « roster ». La liste s'arrete au premier nom vide.
