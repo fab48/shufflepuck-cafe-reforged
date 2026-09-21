@@ -845,8 +845,8 @@ Les valeurs de `$1AFEE` sortent espacées de **4 octets** (`0x0462AE`, `0x0462B2
 d'indirection de plus que supposé, et ma tentative d'extraction directe échoue sur les
 28 échantillons.
 
-`tools/extraire_sons.py` est conservé — sa logique de validation est bonne, seule
-l'interprétation du descripteur est fausse. À reprendre après lecture de `$14DD0`.
+`tools/extraire_sons.py` a depuis été retiré : les sons sortent des banques `.ECH`
+et des `.TC0` (`tools/extraire_ech.py`, `tools/extraire_voix.py`).
 
 ## Voie praticable : capturer la sortie
 
@@ -1359,12 +1359,12 @@ vitre adverse    : echelle = (dy + 150) / 8,  centre (projX(palet), 67)
 - la valeur initiale de `$1B584` (qui sert en premier) ;
 - le passage à l'état 6 pour le lancer de Bejin, déclenché dans l'original par
   la fin d'une animation ;
-- la cadence de 50 images par seconde, non mesurée ;
-- l'obstacle, non transcrit ;
+- la cadence de 50 images par seconde, non mesurée (mesurée depuis : 25 images/s) ;
+- l'obstacle, non transcrit (transcrit depuis, voir `FINDINGS.md`) ;
 - la correspondance des neuf `.TC0` avec les neuf noms.
 
-`src/ia.c` et `src/shufflepuck.c` portent encore les versions précédentes
-de la détection et de l'IA : **`web/moteur.js` fait désormais foi.**
+La transcription en C (`src/`) portait les versions précédentes de la détection
+et de l'IA ; elle a été retirée. **`web/moteur.js` fait foi.**
 
 ---
 
