@@ -84,7 +84,7 @@ work/         les données dérivées du jeu (non versionné)
 Lancer le prototype :
 
 ```bash
-python -m http.server 8731 --directory D:projetsshufflepuckweb
+python -m http.server 8731 --directory D:/projets/shufflepuck/web
 ```
 
 ## Rien du jeu n'est versionné
