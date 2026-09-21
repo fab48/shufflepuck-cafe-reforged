@@ -92,10 +92,10 @@ ni serveur, ni Python, ni Node. Il se reconstruit avec
 `python tools/construire_html.py`.
 
 **Depuis les sources** — il faut un serveur, les modules JavaScript ne se
-chargent pas depuis un fichier ouvert directement :
+chargent pas depuis un fichier ouvert directement. Depuis la racine du projet :
 
 ```bash
-python -m http.server 8731 --directory D:/projets/shufflepuck/web
+python -m http.server 8731 --directory web
 ```
 
 ou double-cliquer sur `run/web.bat`.
