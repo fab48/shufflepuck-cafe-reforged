@@ -9,7 +9,7 @@ name: Publier sur GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['web/**', '.github/workflows/pages.yml']
+    paths: ['web/**', 'tools/construire_html.py', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -37,6 +37,8 @@ jobs:
           mkdir -p site
           cp -r web/* site/
           rm -f site/README.md
+          python3 tools/construire_html.py
+          cp dist/shufflepuck.html site/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

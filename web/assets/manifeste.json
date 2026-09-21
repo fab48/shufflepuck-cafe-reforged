@@ -2475,6 +2475,17 @@
    "pas_simulation": 92
   }
  ],
+ "index_blocs": [
+  0,
+  2,
+  1,
+  3,
+  5,
+  4,
+  6,
+  7,
+  8
+ ],
  "joueur": {
   "y": 150,
   "largeur": 100,

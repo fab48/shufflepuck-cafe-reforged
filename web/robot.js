@@ -59,7 +59,7 @@ export class Robot {
     g.font = '7px monospace';
     g.textBaseline = 'top';
     g.fillText('Visiteur', 5, 9);                                  // $14FA4 (5, 9)
-    g.fillText(this.m.table_adversaires[this.mo.idx].nom, 5, 20);  // $14FA4 (5, 20)
+    g.fillText(this.mo.A.nom, 5, 20);                  // +$52 du bloc, $14FA4 (5, 20)
   }
 
   // $00DFEC : l'abscisse du n-ieme baton. Groupes de cinq, 18 px par groupe,

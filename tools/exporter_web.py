@@ -338,6 +338,16 @@ def main():
             bloc[champ] = mot(a + off)
         table.append(bloc)
     manifeste['table_adversaires'] = table
+    # $1A01A : le pointeur de bloc de chaque index d'adversaire, lu par
+    # 0x0106DC. Il n'est PAS dans l'ordre : il echange les blocs 1<->2 et
+    # 4<->5. Lexan (3) et Dc3 (8) pointent sur des copies de travail
+    # ($1B5B6, $1B60C), faites de leur bloc.
+    index_blocs = []
+    for i in range(9):
+        p = struct.unpack_from('>L', ram, 0x1A01A + 4 * i)[0]
+        index_blocs.append({0x1B5B6: 3, 0x1B60C: 8}.get(p, (p - B) // PAS))
+    manifeste['index_blocs'] = index_blocs
+    print('  index    -> blocs : %s' % index_blocs)
     # le bloc court du joueur, 32 octets, juste avant la table
     joueur = {'y': mot(0x19CF4 + 0x02), 'largeur': mot(0x19CF4 + 0x08)}
     for champ, off in CHAMPS[1:9]:
