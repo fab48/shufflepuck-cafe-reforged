@@ -399,6 +399,81 @@ def main():
     for champ, off in CHAMPS[1:9]:
         joueur[champ] = mot(0x19CF4 + off)
     manifeste['joueur'] = joueur
+    # $1A0E0 : le bloc du joueur « de tournoi », recopie sur $19CF4 par
+    # l'entree « palette de tournoi » ($123EE) et au debut d'un tournoi.
+    manifeste['joueur_tournoi'] = dict({'x': mot(0x1A0E0), 'y': mot(0x1A0E2)},
+                                       **{champ: mot(0x1A0E0 + off) for champ, off in CHAMPS[:9]})
+
+    # --- l'obstacle : $19CEA x, $19CEC vx, $19CEE taille, $19CF0 poids,
+    # $19CF2 actif. Les trois obstacles tout faits du menu ($12434) sont des
+    # blocs de 5 mots a $1A0C2, $1A0CC, $1A0D6.
+    CH_OBST = ['x', 'vx', 'taille', 'poids', 'actif']
+    bloc5 = lambda a: {c: mot(a + 2 * i) for i, c in enumerate(CH_OBST)}
+    manifeste['obstacle'] = {'initial': bloc5(0x19CEA),
+                             'tout_faits': [bloc5(a) for a in (0x1A0C2, 0x1A0CC, 0x1A0D6)]}
+
+    # --- le menu de la barre d'espace ($1299E) ----------------------------
+    # Une barre ($1A4DE, type 1, dessinee par $12EF6) et des boites ($12CC6)
+    # empilees sur $1B664. Enregistrement de 12 octets : x, y, liste
+    # d'entrees, type, entree choisie. Les listes des deux premiers menus
+    # sont posees a l'execution par $1299E et $12246 : on lit les chaines la
+    # ou le code les prend.
+    def chaine(a):
+        return ram[a:ram.index(bytes(1), a)].decode('latin1')
+    def liste(p):
+        out = []
+        while struct.unpack_from('>L', ram, p)[0]:
+            out.append(chaine(struct.unpack_from('>L', ram, p)[0]))
+            p += 4
+        return out
+    def boite(a, entrees=None):
+        return {'x': mot(a), 'y': mot(a + 2), 'type': mot(a + 8),
+                'entrees': entrees if entrees is not None
+                else liste(struct.unpack_from('>L', ram, a + 4)[0])}
+    # Les variables que les curseurs modifient, par adresse : le bloc du
+    # joueur ($19CF4), la copie de travail de Dc3 ($1B60C), l'obstacle, et
+    # $1AFDE, la variable de passage des tailles (valeur / 5).
+    VARS = {0x1AFDE: 'passage'}
+    for champ, off in CHAMPS:
+        VARS[0x19CF4 + off] = 'joueur.' + champ
+        VARS[0x1B60C + off] = 'dc3.' + champ
+    for i, c in enumerate(CH_OBST):
+        VARS[0x19CEA + 2 * i] = 'obstacle.' + c
+    def var(p):
+        return VARS[p] if p else None
+    dialogues = {}
+    for a in range(0x1A40A, 0x1A46E, 10):
+        titre = chaine(struct.unpack_from('>L', ram, a)[0])
+        n, w = mot(a + 4), struct.unpack_from('>L', ram, a + 6)[0]
+        curseurs = []
+        for k in range(n):
+            r = w + 26 * k
+            L = lambda o: struct.unpack_from('>L', ram, r + o)[0]
+            if L(20):
+                raise SystemExit('curseur %06X : rappel %06X non transcrit' % (r, L(20)))
+            curseurs.append({'libelle': chaine(L(0)), 'variable': var(L(12)),
+                             'min': mot(r + 16), 'max': mot(r + 18),
+                             'plancher': var(L(4)), 'plafond': var(L(8))})
+        dialogues['%X' % a] = {'titre': titre, 'curseurs': curseurs}
+    manifeste['menu'] = {
+        'barre': boite(0x1A4DE, [chaine(0x11C44), chaine(0x11C4B),        # scores, jeu
+                                 chaine(0x12AE4), chaine(0x12AEC),        # palette, obstacle
+                                 chaine(0x12AF5)]),                       # robot (Dc3 seul)
+        'jeu': boite(0x1A4EA, [chaine(0x1233F), chaine(0x1234F), chaine(0x12361)]),
+        'palette': boite(0x1A4F6),
+        'obstacle': boite(0x1A502),
+        'robot': boite(0x1A50E),
+        'dialogues': dialogues,
+        # $13C9A : la demande de disquette, et ses deux messages ($13DB1, $13DE8).
+        'disquettes': [chaine(0x13DB1), chaine(0x13DE8)],
+        # $1A520 : le tableau des maitres, 30 fiches de 14 octets (nom sur
+        # 12, score au mot +$C), affiche par l'entree « scores » ($12684)
+        # sur l'image « roster ». La liste s'arrete au premier nom vide.
+        'tableau': [[ram[a:a + 12].split(bytes(1))[0].decode('latin1'), mot(a + 12)]
+                    for a in range(0x1A520, 0x1A520 + 30 * 14, 14)],
+    }
+    print('  menu     %d dialogues, %d curseurs'
+          % (len(dialogues), sum(len(d['curseurs']) for d in dialogues.values())))
 
     # La vitre : un cadre de fissure et 13 eclats, traces en lignes par
     # 0x00F164. Enregistrements de 14 octets a $19B04 (le cadre) et $19B12

@@ -344,3 +344,45 @@ rôle. Reconnaître une structure ne dit pas à quoi elle sert.
 
 *Ouvert :* le binaire nomme deux banques, `ringard.ech` et `shuffle.ech` ;
 une seule a été trouvée sur les disquettes.
+
+### Le menu de la barre d'espace, et Dc3 réglable
+
+`$FD38` voit la touche Espace et pose `$1B57E = 6` ; la boucle `$DAA4` sort,
+`$DB00` coupe le son et appelle `$1299E`. Tout le menu est transcrit dans
+`web/menu.js`, ses données sont lues dans la mémoire par l'exporteur :
+
+- une **pile de menus** `$1B664` (compte `$1A51A`), enregistrements de 12
+  octets : x, y, liste d'entrées, type (1 = la barre du haut, `$12EF6` /
+  `$1307A` ; 0 = une boîte, `$12CC6` / `$12DCA`), entrée choisie ;
+- à chaque tour, `$ED06` redessine **le décor seul** (`$EC94` : la table et
+  le tableau des points, sans personnage ni raquettes), puis la pile ;
+- dix **fenêtres à curseurs** `$1A40A..$1A464` (titre, nombre, curseurs de 26
+  octets : libellé, plancher, plafond, variable, min, max, rappel,
+  sauvegarde), interaction `$1348C`, boutons SET-IT et CANCEL.
+
+L'entrée `robot` n'est ajoutée à la barre que si l'adversaire est d'index 8
+(`$129DA`) : **Dc3 est le robot d'entraînement**, et ses fenêtres modifient sa
+copie de travail `$1B60C`. Celle-ci est recopiée depuis son bloc d'origine
+`$19FC4` quand on le choisit au bar (`$1220A`), et **pas** à « nouvelle
+partie » : les réglages tiennent d'une partie à l'autre. Après SET-IT, le
+code recopie certains réglages sur leurs jumeaux (`$12584`, `$125BC`,
+`$12610`) ; `$1262E` recopie `$1B644` sur lui-même, une coquille gardée.
+
+Un détail lu et gardé : « charge tournoi », faute de `tourname.dat`,
+enchaîne sur « nouvel adversaire » (`$122DA`).
+
+*Erreur corrigée :* j'avais écrit que `$174C8` perdait le bit 15 du numéro
+de sprite (il double le numéro sur un mot pour indexer la table) et que les
+coins droits du cadre sortaient donc non retournés. Mais `$175F0` relit le
+numéro d'origine : bit 15 levé, le sprite est retourné horizontalement en
+mémoire (table de bits inversés `$1AD2E`, drapeau dans l'octet de largeur).
+Le cadre « cassé » à droite venait de là ; Fabien l'a vu à l'image.
+
+L'**obstacle** (`$19CEA` : x, vx, taille, poids, actif) est transcrit avec :
+glissement et rebonds `$10614`, collision `$1023C` (échange des vitesses
+latérales à travers le poids), dessin comme une raquette à Y = 750 dans
+l'ordre du peintre `$DF72`.
+
+Le démarrage (`$D138`) : les couronnes (`BRODER`), la musique (`$113C2`,
+séquence 2), l'image de la porte (`PRESENT`) **pendant tout le chargement**,
+puis le rideau `$EA62` — un cadre noir qui se referme en 160 pas — et le bar.

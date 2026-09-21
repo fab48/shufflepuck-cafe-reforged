@@ -4046,6 +4046,529 @@
   "accel_x2": 70,
   "accel_y2": 140
  },
+ "joueur_tournoi": {
+  "x": 0,
+  "y": 150,
+  "largeur": 100,
+  "reflex_x": 50,
+  "reflex_y": 50,
+  "accel_x": 70,
+  "accel_y": 130,
+  "reflex_x2": 50,
+  "reflex_y2": 50,
+  "accel_x2": 70,
+  "accel_y2": 140
+ },
+ "obstacle": {
+  "initial": {
+   "x": 0,
+   "vx": 0,
+   "taille": 25,
+   "poids": 5,
+   "actif": 0
+  },
+  "tout_faits": [
+   {
+    "x": 0,
+    "vx": 0,
+    "taille": 50,
+    "poids": 5,
+    "actif": 1
+   },
+   {
+    "x": 0,
+    "vx": 0,
+    "taille": 100,
+    "poids": 5,
+    "actif": 1
+   },
+   {
+    "x": 0,
+    "vx": 0,
+    "taille": 150,
+    "poids": 5,
+    "actif": 1
+   }
+  ]
+ },
+ "menu": {
+  "barre": {
+   "x": 0,
+   "y": 0,
+   "type": 1,
+   "entrees": [
+    "scores",
+    "jeu",
+    "palette",
+    "obstacle",
+    "robot"
+   ]
+  },
+  "jeu": {
+   "x": 100,
+   "y": 37,
+   "type": 0,
+   "entrees": [
+    "nouvelle partie",
+    "nouvel adversaire",
+    "charge tournoi"
+   ]
+  },
+  "palette": {
+   "x": 150,
+   "y": 37,
+   "type": 0,
+   "entrees": [
+    "taille palette",
+    "bouton relache",
+    "bouton presse",
+    "palette de tournoi"
+   ]
+  },
+  "obstacle": {
+   "x": 200,
+   "y": 37,
+   "type": 0,
+   "entrees": [
+    "sans obstacle",
+    "petit obstacle",
+    "obstacle moyen",
+    "gros obstacle",
+    "definir un obstacle"
+   ]
+  },
+  "robot": {
+   "x": 200,
+   "y": 37,
+   "type": 0,
+   "entrees": [
+    "taille palette",
+    "puissance palette",
+    "attente",
+    "vitesse palette",
+    "puissance frappe",
+    "puissance service"
+   ]
+  },
+  "dialogues": {
+   "1A40A": {
+    "titre": "palette",
+    "curseurs": [
+     {
+      "libelle": "taille",
+      "variable": "passage",
+      "min": 5,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A414": {
+    "titre": "bouton relache",
+    "curseurs": [
+     {
+      "libelle": "reflexion laterale",
+      "variable": "joueur.reflex_x",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "reflexion transversale",
+      "variable": "joueur.reflex_y",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "acceleration laterale",
+      "variable": "joueur.accel_x",
+      "min": 0,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "acceleration transversale",
+      "variable": "joueur.accel_y",
+      "min": 0,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A41E": {
+    "titre": "bouton presse",
+    "curseurs": [
+     {
+      "libelle": "reflexion laterale",
+      "variable": "joueur.reflex_x2",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "reflexion transversale",
+      "variable": "joueur.reflex_y2",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "acceleration laterale",
+      "variable": "joueur.accel_x2",
+      "min": 0,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "acceleration transversale",
+      "variable": "joueur.accel_y2",
+      "min": 0,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A428": {
+    "titre": "obstacle",
+    "curseurs": [
+     {
+      "libelle": "taille",
+      "variable": "passage",
+      "min": 5,
+      "max": 75,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "poids",
+      "variable": "obstacle.poids",
+      "min": 1,
+      "max": 10,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A432": {
+    "titre": "palette du robot",
+    "curseurs": [
+     {
+      "libelle": "taille",
+      "variable": "passage",
+      "min": 5,
+      "max": 40,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A43C": {
+    "titre": "palette du robot",
+    "curseurs": [
+     {
+      "libelle": "reflexion laterale",
+      "variable": "dc3.reflex_x",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "reflexion transversale",
+      "variable": "dc3.reflex_y",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "acceleration laterale",
+      "variable": "dc3.accel_x",
+      "min": 0,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "acceleration transversale",
+      "variable": "dc3.accel_y",
+      "min": 0,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A446": {
+    "titre": "attente du robot",
+    "curseurs": [
+     {
+      "libelle": "debattement horizontal",
+      "variable": "dc3.x_max",
+      "min": 0,
+      "max": 250,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "vitesse attente horizontale",
+      "variable": "dc3.v_attente_x",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "debattement vertical",
+      "variable": "passage",
+      "min": 0,
+      "max": 140,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "vitesse attente verticale",
+      "variable": "dc3.v_attente_y",
+      "min": 0,
+      "max": 100,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A450": {
+    "titre": "palette du robot",
+    "curseurs": [
+     {
+      "libelle": "vitesse d'attaque",
+      "variable": "dc3.v_attaque",
+      "min": 1,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "vitesse de defense",
+      "variable": "dc3.v_defense",
+      "min": 1,
+      "max": 200,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A45A": {
+    "titre": "puissance de frappe du robot",
+    "curseurs": [
+     {
+      "libelle": "gauche-droite min",
+      "variable": "dc3.disp_x_min",
+      "min": -250,
+      "max": 250,
+      "plancher": null,
+      "plafond": "dc3.disp_x_max"
+     },
+     {
+      "libelle": "gauche-droite max",
+      "variable": "dc3.disp_x_max",
+      "min": -250,
+      "max": 250,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "avant-arriere min",
+      "variable": "dc3.disp_y_min",
+      "min": 0,
+      "max": 300,
+      "plancher": null,
+      "plafond": "dc3.disp_y_max"
+     },
+     {
+      "libelle": "avant-arriere max",
+      "variable": "dc3.disp_y_max",
+      "min": 0,
+      "max": 300,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   },
+   "1A464": {
+    "titre": "puissance du service du robot",
+    "curseurs": [
+     {
+      "libelle": "gauche-droite min",
+      "variable": "dc3.cible_x_min",
+      "min": -250,
+      "max": 250,
+      "plancher": null,
+      "plafond": "dc3.cible_x_max"
+     },
+     {
+      "libelle": "gauche-droite max",
+      "variable": "dc3.cible_x_max",
+      "min": -250,
+      "max": 250,
+      "plancher": null,
+      "plafond": null
+     },
+     {
+      "libelle": "avant-arriere min",
+      "variable": "dc3.cible_y_min",
+      "min": 0,
+      "max": 300,
+      "plancher": null,
+      "plafond": "dc3.cible_y_max"
+     },
+     {
+      "libelle": "avant-arriere max",
+      "variable": "dc3.cible_y_max",
+      "min": 0,
+      "max": 300,
+      "plancher": null,
+      "plafond": null
+     }
+    ]
+   }
+  },
+  "disquettes": [
+   "Inserer le disque shufflepuck1 dans le lecteur 0.",
+   "Inserer le disque shufflepuck2 dans le lecteur 0."
+  ],
+  "tableau": [
+   [
+    "Biff Raunch",
+    14
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ],
+   [
+    "",
+    0
+   ]
+  ]
+ },
  "vitre": {
   "cadre": [
    [

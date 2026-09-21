@@ -100,6 +100,19 @@ python -m http.server 8731 --directory web
 
 ou double-cliquer sur `run/web.bat`.
 
+**Les commandes, comme sur le ST** : la souris pilote la raquette, le bouton
+maintenu donne le coup appuyé. **Espace** ouvre le menu d'origine : `scores`
+(le tableau des maîtres), `jeu` (nouvelle partie, nouvel adversaire),
+`palette` (réglages de votre raquette), `obstacle`, et `robot` — qui
+n'apparaît que contre **Dc3**, le robot d'entraînement, et règle chacun de ses
+paramètres. Clic droit : fermer. Le bouton « son » coupe le son (`?muet` dans
+l'adresse aussi).
+
+Un seul son n'est pas du jeu : le bruit de lecteur de disquette de l'accueil,
+un clin d'œil (« reading floppy disc 2 », freesound_community, découpé par
+`tools/bruit_disquette.py`). La boîte qui demande la disquette 2, elle, est
+celle du jeu (`$13C9A`).
+
 ## Ce qui est versionné
 
 Les assets tirés des disquettes sont versionnés tels quels : `web/assets/`
