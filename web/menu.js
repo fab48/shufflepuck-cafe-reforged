@@ -280,7 +280,7 @@ export class Menu {
         case -1: fini = true; break;
         case 0: await this.scores(); break;
         case 1: await this.jeu(); break;
-        case 2: await this.palette(); break;
+        case 2: await this.menuPalette(); break;
         case 3: await this.obstacle(); break;
         case 4: await this.robot(); break;
       }
@@ -326,7 +326,7 @@ export class Menu {
   }
 
   // --- $012370 : palette (celle du joueur) ---------------------------------------
-  async palette() {
+  async menuPalette() {
     const mo = this.mo;
     this.empiler(this.m.menu.palette);
     for (;;) {
