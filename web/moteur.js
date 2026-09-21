@@ -53,6 +53,7 @@ export class Moteur {
     this.m = m;
     this.graine = 12345;                 // $1AFB4
     this.sons = [];                      // sons declenches pendant l'image
+    this.animEnCours = 0;                // $18440, tenu a jour par la page
     // La table des neuf blocs, creee UNE fois : les blocs statiques vivent
     // toute la session. Quand Nerual copie la frappe du joueur, il modifie
     // SON bloc, durablement.
@@ -207,6 +208,9 @@ export class Moteur {
     const P = this.P;
     switch (this.etatJeu) {
       case ETAT_JEU.RETOUR_JOUEUR:                      // $10368
+        // Le palet attend que les animations du personnage soient finies
+        // ($18440, le nombre de scripts devant/derriere en cours).
+        if (this.animEnCours) break;
         P.x += borner(-15, -P.x, 15);
         P.y += borner(-60, 295 - P.y, 60);
         if (P.x === 0 && P.y === 295) {
@@ -215,6 +219,7 @@ export class Moteur {
         }
         break;
       case ETAT_JEU.RETOUR_ADV:                         // $103D6
+        if (this.animEnCours) break;
         P.x += borner(-15, -P.x, 15);
         P.y += borner(-60, 1205 - P.y, 60);
         if (P.x === 0 && P.y === 1205) {
