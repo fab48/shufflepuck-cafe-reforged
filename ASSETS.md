@@ -82,7 +82,7 @@ et leur secteur d'amorçage porte un BPB parfaitement cohérent : 512 o/secteur,
 
 Mais c'est un leurre. La FAT est blanchie (`F7 FF FF` puis des zéros : tout
 libre) et le répertoire ne contient aucun nom. `tools/fat12.py` en sort
-soixante entrées de pur bruit. Aucune chaîne `SPRITES`, `BARSPRIT`, `INTBAR`
+soixante entrées de pur bruit *(outil retiré lors du ménage de septembre 2026 ; il reste dans l'historique git)*. Aucune chaîne `SPRITES`, `BARSPRIT`, `INTBAR`
 ni `.PC1` n'existe nulle part sur les deux disquettes.
 
 **Le jeu lit donc par secteur absolu.** On ne peut pas demander la liste des

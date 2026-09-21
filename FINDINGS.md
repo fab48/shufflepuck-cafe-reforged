@@ -80,7 +80,7 @@ FAT1 (secteur logique 1) commence par `f7 ff ff 00 00 ...`. Les 32 derniers Ko s
 
 ## 🐛 Bug ouvert — lecteur Pasti maison
 
-`tools/stx_sectors.py` lit correctement les secteurs ordinaires mais **se trompe sur
+`tools/stx_sectors.py` *(outil retiré lors du ménage de septembre 2026 ; il reste dans l'historique git)* lit correctement les secteurs ordinaires mais **se trompe sur
 ceux dont les données résident à l'intérieur de l'image de piste** (descripteurs dont
 l'offset pointe sous `track_image_size` — ex. piste 0 secteur 4, `off=2176` pour une
 image de 6247 o).
@@ -264,7 +264,7 @@ bornes différentes. Je ne sais pas pourquoi et je ne l'invente pas.
 
 ### Le pointeur de nom est en +$52, pas +$54
 
-`tools/gen_table.py` lisait un **mot** en `+$54` et rajoutait `0x010000`.
+`tools/gen_table.py` *(outil retiré lors du ménage de septembre 2026 ; il reste dans l'historique git)* lisait un **mot** en `+$54` et rajoutait `0x010000`.
 Cela tombait juste parce que tous les noms sont en `$0106xx` — la moitié
 basse suffisait. Mais c'était faux, et c'est ce qui a fait écrire « +$54 »
 dans la documentation.

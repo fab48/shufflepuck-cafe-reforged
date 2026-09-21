@@ -1,128 +1,108 @@
-# Shufflepuck Café — rétro-ingénierie complète
+# Shufflepuck Café — reforged
 
-Projet personnel de préservation, à partir d'un exemplaire d'origine possédé
-(Atari STF, édition Loriciel/Brøderbund, 1989).
+A complete reverse-engineering of **Shufflepuck Café** (Atari ST,
+Brøderbund/Loriciel, 1989, by Christopher Gross), and a faithful rebuild of
+the game for the web, from an original copy of the disks.
 
-L'objectif est de **tout désassembler et tout réécrire**, pour pouvoir en
-faire une version moderne sur les plateformes d'aujourd'hui — et non de
-bricoler une émulation habillée.
+**Play it:** <https://fab48.github.io/shufflepuck-cafe-reforged/>
 
-## Règle du projet
+Nothing is redrawn and nothing is guessed: the images, sounds, physics,
+opponent AI, animations and menus are read byte by byte from the disks and
+from the 68000 code, then transcribed. Where the original could not be read,
+the code says so (`RECONSTRUCTION`).
 
-**Aucune affirmation sans les octets qui la portent.** Chaque offset, chaque
-format, chaque constante est accompagné de sa preuve. Les hypothèses sont
-étiquetées comme telles. Les erreurs sont corrigées dans le texte, avec leur
-cause — il y en a une quinzaine de documentées dans `FINDINGS.md`, et c'est
-volontaire : savoir *comment* on s'est trompé vaut la correction elle-même.
+## Playing
 
-## Où en est le travail
+- **Online** — the link above, rebuilt from `web/` on every push.
+- **One file** — [`dist/shufflepuck.html`](dist/shufflepuck.html) holds
+  everything (code, images, sounds). Download it and double-click it: no
+  server, no Python, no Node.
+- **From the sources** — ES modules need a server. From the project root:
 
-### Le moteur
+  ```bash
+  python -m http.server 8731 --directory web
+  ```
 
-Physique du palet, collision, IA des neuf adversaires, machine à états,
-service, pilotage de la raquette à la souris, projection en perspective,
-architecture audio, ivresse de Lexan — établis et transcrits en C lisible
-(`src/`). La table des neuf adversaires n'est pas recopiée à la main : elle
-est **générée** depuis la mémoire du jeu.
+  or double-click `run/web.bat`, then open <http://localhost:8731>.
 
-La nomenclature des champs vient des auteurs eux-mêmes : Loriciel a livré le
-jeu avec son **éditeur de réglages** encore dedans, une table de widgets à
-`0x01A118` où chaque paramètre porte son libellé français et ses bornes.
+**Controls, as on the ST.** The mouse drives your paddle; holding the
+button gives the harder shot. Click the table to capture the mouse, *Esc*
+releases it. **Space** opens the original menu:
 
-### Les assets
+| Entry | What it does |
+|---|---|
+| `scores` | the hall of fame |
+| `jeu` | new game, new opponent (back to the bar) |
+| `palette` | your paddle: size, and the physics of both buttons |
+| `obstacle` | none, small, medium, large, or your own sliding block |
+| `robot` | only against **Dc3**, the training robot: every one of its parameters |
 
-Les deux disquettes n'ont **aucun système de fichiers** : la FAT est
-blanchie, le répertoire vide, et le jeu lit par secteur absolu. Chaque format
-a donc été reconnu par sa signature, puis **vérifié** par une égalité de
-taille exacte.
+Right-click closes a menu. In a dialog, drag the sliders, then **SET-IT**
+to keep or **CANCEL** to undo. The banner has a full-screen button and a
+sound toggle (`?muet` in the address starts muted, `?debug` shows the engine
+state).
 
-| Format | Ce que c'est | État |
-|---|---|---|
-| `.PC1` | Degas Elite compressé (PackBits) | 5 écrans extraits |
-| `.CPL` | RLE à convention inversée | `barsprit` (57 sprites), `sprites` (28) |
-| `.TC0` | codage par paires d'octets | **les 9 adversaires**, 136 sprites |
-| `.ECH` | banque sonore | musique + bruitages, 33 sons |
+## What was done
 
-Disquette 1 : **98 % expliqué** (dont 19 % de programme).
-Disquette 2 : **96 % expliqué**.
+**The disks.** Neither disk has a usable file system (the FAT is a decoy,
+the game reads absolute sectors). Every file was found by its signature and
+verified by an exact size match; every decompressor is a transcription of
+the game's own loader.
 
-Les `.TC0` portent chacun les images **et la voix** de leur personnage.
+| Format | What it is |
+|---|---|
+| `.PC1` | Degas Elite screens (PackBits) |
+| `.CPL` | sprite banks (RLE with an inverted convention) |
+| `.TC0` | the nine opponents: sprites *and* voice (byte-pair encoding) |
+| `.ECH` | sound banks |
 
-Le son numérisé sur un STF, qui n'a pas de DMA audio : chaque octet de
-l'échantillon indexe un triplet de volumes des trois voies du YM2149 dans une
-table de 256 entrées, et le Timer A en consomme un par tic. Le rebond du
-palet n'est pas vingt-trois sons enregistrés mais **un seul**, transposé en
-changeant le diviseur du timer.
+**The sound.** An STF has no DMA audio. The game still plays digitised
+sound: each sample byte indexes a table of YM2149 volume triplets, one byte
+per Timer A tick. The puck's bounce is not 23 recordings but one, replayed
+at 23 timer divisors.
 
-### Le code
+**The code.** Recursive 68000 disassembly seeded by the compiler's
+`link a5` prologues, then a routine-by-routine transcription: the game loop,
+the puck and its collisions, the nine AIs, the 3D paddles and painter's
+order, the animation scripts that rewrite themselves, the robot hand that
+chalks the score, the bar, the menu system and its dialogs, the obstacle,
+the welcome sequence. Timing was measured in the emulator (25 fps, and the
+recorded slowdown while the glass shatters).
 
-**76 % du code réellement chargé** est atteint par désassemblage récursif,
-411 fonctions. Le gisement décisif : ce compilateur ouvre chaque fonction par
-`link a5,#-N`, et un `4E 55` précédé d'un `rts` est une fonction, pas un
-hasard.
+How it was done, step by step, with the tools: **[METHODOLOGY.md](METHODOLOGY.md)**.
 
-### Le prototype
-
-`web/` — un prototype jouable dans un navigateur, sur la physique
-transcrite et les décors d'origine. Trois endroits y sont signalés comme
-**reconstruction** et non transcription, parce qu'ils ne sont pas lus dans
-l'original. Voir `web/README.md`.
-
-## Organisation
+## Repository layout
 
 ```
-PHYSICS.md    la spécification du moteur — le livrable principal
-FINDINGS.md   le journal, avec les preuves et les erreurs
-ASSETS.md     les formats de fichiers et ce qui en a été tiré
-src/          le moteur en C lisible
-web/          le prototype navigateur
-tools/        les outils d'analyse et d'extraction
-run/          la configuration Hatari, pour jouer à l'original
-work/         les données dérivées du jeu (seul work/assets/ est versionné)
+web/            the game (HTML + JavaScript modules) and its assets
+dist/           the single-file build
+tools/          extraction, disassembly and build tools (Python)
+run/            Hatari launchers and configuration, to play the original
+work/assets/    raw extraction output (the rest of work/ stays local)
+METHODOLOGY.md  the method, in English
+PHYSICS.md      engine specification (French)
+ASSETS.md       file formats and what came out of them (French)
+FINDINGS.md     the research journal, mistakes included (French)
 ```
 
-## Jouer
+The French notebooks are kept as they were written: they carry the
+evidence, address by address, and every correction with its cause.
 
-**En ligne** : <https://fab48.github.io/shufflepuck-cafe-reforged/> — publié
-automatiquement depuis `web/` à chaque push (`.github/workflows/pages.yml`).
-
-**En un fichier** : [`dist/shufflepuck.html`](dist/shufflepuck.html) — tout y
-est intégré (code, images, sons). Le télécharger et l'ouvrir d'un double-clic :
-ni serveur, ni Python, ni Node. Il se reconstruit avec
-`python tools/construire_html.py`.
-
-**Depuis les sources** — il faut un serveur, les modules JavaScript ne se
-chargent pas depuis un fichier ouvert directement. Depuis la racine du projet :
+## Rebuilding
 
 ```bash
-python -m http.server 8731 --directory web
+python tools/exporter_web.py      # web/assets from the disk images and RAM dumps
+python tools/construire_html.py   # dist/shufflepuck.html
 ```
 
-ou double-cliquer sur `run/web.bat`.
+The disk images and RAM dumps (`work/`) are not versioned: they come from
+your own original disks (see `METHODOLOGY.md`).
 
-**Les commandes, comme sur le ST** : la souris pilote la raquette, le bouton
-maintenu donne le coup appuyé. **Espace** ouvre le menu d'origine : `scores`
-(le tableau des maîtres), `jeu` (nouvelle partie, nouvel adversaire),
-`palette` (réglages de votre raquette), `obstacle`, et `robot` — qui
-n'apparaît que contre **Dc3**, le robot d'entraînement, et règle chacun de ses
-paramètres. Clic droit : fermer. Le bouton « son » coupe le son (`?muet` dans
-l'adresse aussi).
+## Rights
 
-Un seul son n'est pas du jeu : le bruit de lecteur de disquette de l'accueil,
-un clin d'œil (« reading floppy disc 2 », freesound_community, découpé par
-`tools/bruit_disquette.py`). La boîte qui demande la disquette 2, elle, est
-celle du jeu (`$13C9A`).
-
-## Ce qui est versionné
-
-Les assets tirés des disquettes sont versionnés tels quels : `web/assets/`
-(planches de sprites, décors, sons, manifeste) et `work/assets/` (le produit
-brut de l'extraction). Le reste de `work/` — images de disquettes, dumps
-mémoire, captures — reste en local : il se reconstitue depuis ses propres
-disquettes.
-
-Le code de rétro-ingénierie est à nous ; les images, les sons et les données
-du jeu ne le sont pas. Le jeu reste la propriété de ses ayants droit (chaîne
-Brøderbund → The Learning Company → Mattel → Gores → Ubisoft pour le
-catalogue ludique, 2001 — jamais réédité depuis 1989). Les assets ont été
-extraits d'un exemplaire d'origine possédé.
+The reverse-engineering code is ours; the game's images, sounds and data
+are not. Shufflepuck Café belongs to its rights holders (Brøderbund → The
+Learning Company → Mattel → Gores → Ubisoft for the game catalogue, 2001 —
+never re-released since 1989). The assets were extracted from an owned
+original copy. One sound is not from the game: the floppy-drive noise on
+the welcome screen ("reading floppy disc 2", freesound_community).
