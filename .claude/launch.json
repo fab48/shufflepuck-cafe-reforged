@@ -4,7 +4,7 @@
     {
       "name": "web",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8731", "--directory", "D:/projets/shufflepuck/web"],
+      "runtimeArgs": ["-m", "http.server", "8731", "--directory", "D:/00_Projets/shufflepuck/web"],
       "port": 8731
     }
   ]

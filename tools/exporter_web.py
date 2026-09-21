@@ -338,6 +338,42 @@ def main():
             bloc[champ] = mot(a + off)
         table.append(bloc)
     manifeste['table_adversaires'] = table
+    # $1A01A : le pointeur de bloc de chaque index d'adversaire, lu par
+    # 0x0106DC. Il n'est PAS dans l'ordre : il echange les blocs 1<->2 et
+    # 4<->5. Lexan (3) et Dc3 (8) pointent sur des copies de travail
+    # ($1B5B6, $1B60C), faites de leur bloc.
+    index_blocs = []
+    for i in range(9):
+        p = struct.unpack_from('>L', ram, 0x1A01A + 4 * i)[0]
+        index_blocs.append({0x1B5B6: 3, 0x1B60C: 8}.get(p, (p - B) // PAS))
+    manifeste['index_blocs'] = index_blocs
+
+    # La fonte « quete.fnt ». Absente des disquettes sous forme de fichier
+    # reconnaissable, mais chargee en memoire au demarrage : $1B53A pointe
+    # dessus. Format lu dans $14F4E et $14FA4 :
+    #   +0 premier caractere, +1 dernier, +2 hauteur, +3 octets par ligne
+    #   +4 long : offset de la table des caracteres (un mot par caractere :
+    #      12 bits de position en pixels dans la planche, 4 bits de largeur)
+    #   +8 la planche, 1 bit par pixel, poids fort a gauche
+    # Avance : largeur (3 si nulle) + l'espacement $1A710.
+    f = struct.unpack_from('>L', ram, 0x1B53A)[0]
+    prem, dern, haut, lb = ram[f], ram[f + 1], ram[f + 2], ram[f + 3]
+    t = f + struct.unpack_from('>L', ram, f + 4)[0] - 2 * prem
+    glyphes = {}
+    for c in range(prem, dern + 1):
+        d = struct.unpack_from('>H', ram, t + 2 * c)[0]
+        x, w = d & 0xFFF, d >> 12
+        lignes = []
+        for y in range(haut):
+            ligne = ram[f + 8 + y * lb: f + 8 + (y + 1) * lb]
+            bits = ''.join('%08d' % int(bin(o)[2:]) for o in ligne)
+            lignes.append(bits[x:x + w])
+        glyphes[chr(c)] = {'l': w, 'p': lignes}
+    manifeste['fonte'] = {'hauteur': haut,
+                          'espacement': struct.unpack_from('>h', ram, 0x1A710)[0],
+                          'glyphes': glyphes}
+    print('  fonte    %d caracteres, hauteur %d' % (len(glyphes), haut))
+    print('  index    -> blocs : %s' % index_blocs)
     # le bloc court du joueur, 32 octets, juste avant la table
     joueur = {'y': mot(0x19CF4 + 0x02), 'largeur': mot(0x19CF4 + 0x08)}
     for champ, off in CHAMPS[1:9]:

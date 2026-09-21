@@ -1,0 +1,49 @@
+# Publie le prototype web (dossier web/) et sa version en un fichier sur
+# GitHub Pages a chaque push
+# sur main. Tout y est statique : HTML, modules JavaScript, assets.
+#
+# A activer une seule fois dans le depot :
+#   Settings -> Pages -> Build and deployment -> Source : GitHub Actions
+
+name: Publier sur GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', 'tools/construire_html.py', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Les modules JavaScript ne se chargent pas sans serveur : Pages les
+      # sert en HTTPS, ce qui suffit. On retire seulement les notes internes.
+      - name: Preparer le site
+        run: |
+          mkdir -p site
+          cp -r web/* site/
+          rm -f site/README.md
+          python3 tools/construire_html.py
+          cp dist/shufflepuck.html site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploiement
+        uses: actions/deploy-pages@v4

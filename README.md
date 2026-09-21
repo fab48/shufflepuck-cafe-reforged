@@ -81,11 +81,24 @@ run/          la configuration Hatari, pour jouer à l'original
 work/         les données dérivées du jeu (seul work/assets/ est versionné)
 ```
 
-Lancer le prototype :
+## Jouer
+
+**En ligne** : <https://fab48.github.io/shufflepuck-cafe-reforged/> — publié
+automatiquement depuis `web/` à chaque push (`.github/workflows/pages.yml`).
+
+**En un fichier** : [`dist/shufflepuck.html`](dist/shufflepuck.html) — tout y
+est intégré (code, images, sons). Le télécharger et l'ouvrir d'un double-clic :
+ni serveur, ni Python, ni Node. Il se reconstruit avec
+`python tools/construire_html.py`.
+
+**Depuis les sources** — il faut un serveur, les modules JavaScript ne se
+chargent pas depuis un fichier ouvert directement. Depuis la racine du projet :
 
 ```bash
-python -m http.server 8731 --directory D:/projets/shufflepuck/web
+python -m http.server 8731 --directory web
 ```
+
+ou double-cliquer sur `run/web.bat`.
 
 ## Ce qui est versionné
 

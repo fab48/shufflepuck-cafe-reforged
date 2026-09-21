@@ -6,8 +6,10 @@ centrale, vérifiable.
 
 ## Lancer
 
+Depuis la racine du projet :
+
 ```bash
-python -m http.server 8731 --directory D:/projets/shufflepuck/web
+python -m http.server 8731 --directory web
 ```
 
 puis <http://localhost:8731>. Cliquer sur l'écran capture la souris —

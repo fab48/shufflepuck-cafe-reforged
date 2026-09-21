@@ -28,8 +28,12 @@ export const ETAT_ADV = Object.freeze({   // $1B598, repartiteur 0x010F3A
   IMMOBILE_4: 4, IMMOBILE_5: 5, RECENTRE: 6, FRAPPE_SERVICE: 7,
 });
 
-// Index dans la table $19D14 (et donc $1B5AC).
-const LEXAN = 3, NERUAL = 4, ENEG = 5, BEJIN = 6, BIFF = 7, DC3 = 8;
+// Index d'adversaire ($1B5AC), dans l'ordre du jeu :
+//   0 Skip, 1 Visine, 2 Vinnie, 3 Lexan, 4 Eneg, 5 Nerual, 6 Bejin, 7 Biff, 8 Dc3
+// Ce n'est PAS l'ordre des blocs de parametres a $19D14 : la table de
+// pointeurs $1A01A echange les blocs 1<->2 et 4<->5 (voir m.index_blocs).
+const LEXAN = 3, BEJIN = 6, BIFF = 7, DC3 = 8;
+const BLOC_NERUAL = 4;          // $19E6C, ecrit en adresse absolue par $10148
 
 /** Division tronquee vers zero, comme DIVS. */
 export const div = (a, b) => Math.trunc(a / b);
@@ -114,11 +118,13 @@ export class Moteur {
   // table.
   choisirAdversaire(index) {
     this.idx = index;
+    const bloc = this.m.index_blocs[index];   // $1A01A
     if (index === LEXAN && this.s0 === 0) {
-      this.table[LEXAN] = Object.assign({}, this.lexanSobre,
+      this.table[bloc] = Object.assign({}, this.lexanSobre,
         { x: 0, y: 1500, vx: 0, vy: 0, frappe: 1 });
     }
-    this.A = this.table[index];
+    this.A = this.table[bloc];
+    this.nom = this.A.nom;
     this.A.x = 0; this.A.y = 1350;
     this.A.raquetteVisible = 1;               // +$1C, pose par $0106DC
     this.evenements = [];
@@ -281,7 +287,7 @@ export class Moteur {
     // service). C'est sa facon de "copier" le joueur.
     if (this.nerualCopie) {
       this.nerualCopie = 0;
-      const N = this.table[NERUAL];
+      const N = this.table[BLOC_NERUAL];
       if (!J.frappe) { N.accel_x = J.accel_x; N.accel_y = J.accel_y; }
       else { N.accel_x = J.accel_x2; N.accel_y = J.accel_y2; }
       const vy = J.vy < 5 ? 5 : J.vy;
