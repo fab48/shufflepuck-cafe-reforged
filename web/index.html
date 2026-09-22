@@ -29,6 +29,10 @@
     background: var(--bandeau); border: 1px solid var(--trait); border-radius: 6px;
     padding: 8px 12px; font-size: 12px; min-height: 38px;
   }
+  .reglages { display: flex; gap: 14px; align-items: center; }
+  .reglages label { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+  .reglages input { width: 110px; accent-color: var(--accent); }
+  .reglages output { min-width: 3.5ch; }
   #cadre { line-height: 0; border: 1px solid var(--trait); background: #000; }
   /* Plein ecran : l'image garde ses proportions 320 x 200, bandes noires autour. */
   #cadre:fullscreen {
@@ -59,7 +63,11 @@
 
 <div id="bandeau" class="large">
   <button id="plein">plein écran</button>
-  <button id="son" aria-pressed="false">son : oui</button>
+  <span class="reglages">
+    <label>souris <input id="sensibilite" type="range" min="0.02" max="1" step="0.01">
+      <output id="sensibiliteVal"></output></label>
+    <button id="son" aria-pressed="false">son : oui</button>
+  </span>
 </div>
 
 <div id="cadre" class="large">
@@ -228,11 +236,14 @@ document.addEventListener('keydown', () => { if (audio) initAudio(); });
 const DUREE_LECTURE = 3200;
 async function bruitDisquette() {
   const buf = await tampon('bruit_disquette.wav');
+  if (ecranCourant !== 'lecture') return;          // lecture deja abregee
   const src = audio.createBufferSource();
   const g = audio.createGain();
   g.gain.value = 0.8;
   src.buffer = buf; src.connect(g); g.connect(sortie);
   src.start();
+  actifs.add(src);
+  src.onended = () => actifs.delete(src);
 }
 
 // Coordonnees ecran 320 x 200 d'un evenement souris.
@@ -247,9 +258,40 @@ function coord(e) {
 // palet. Maintenu, il fait passer la raquette au second jeu de
 // coefficients ($19D0E).
 let dx = 0, dy = 0, bouton = false;
+// RECONSTRUCTION, entree seulement : la souris du ST envoyait des comptes
+// bruts, sans acceleration. On demande au navigateur le mouvement brut
+// (sans l'acceleration de Windows) et on convertit ses pixels en comptes
+// ST par un facteur de sensibilite, que chacun regle selon sa souris
+// (curseur « souris » du bandeau, retenu ; ?sensibilite=0.1 dans l'adresse
+// aussi). Le jeu d'origine traite X et Y a l'identique ($15AB6, $FB7A) :
+// le facteur est le meme pour les deux. Le reste (plafond de 32, courbe,
+// collision) est celui du 68000.
+let SENSIBILITE = 0.1;
+try { const v = parseFloat(localStorage.getItem('shufflepuck.sensibilite')); if (v > 0) SENSIBILITE = v; } catch (e) {}
+{ const v = parseFloat(new URLSearchParams(location.search).get('sensibilite')); if (v > 0) SENSIBILITE = v; }
+const sensEl = document.getElementById('sensibilite');
+const sensVal = document.getElementById('sensibiliteVal');
+sensEl.value = SENSIBILITE; sensVal.textContent = SENSIBILITE.toFixed(2);
+sensEl.oninput = () => {
+  SENSIBILITE = parseFloat(sensEl.value);
+  sensVal.textContent = SENSIBILITE.toFixed(2);
+  try { localStorage.setItem('shufflepuck.sensibilite', String(SENSIBILITE)); } catch (e) {}
+};
+let resteX = 0, resteY = 0;      // les fractions de compte, gardees
+let sourisBrute = null;
+function capturer() {
+  const p = ecran.requestPointerLock({ unadjustedMovement: true });
+  // Navigateur sans mouvement brut : capture ordinaire.
+  if (p && p.then) p.then(() => { sourisBrute = true; },
+                          () => { sourisBrute = false; ecran.requestPointerLock(); });
+}
 ecran.addEventListener('mousedown', (e) => {
   initAudio();
   if (ecranCourant === 'disquette') { allerA('inseree'); return; }
+  // Un clic abrege l'accueil : il coupe la musique pour passer a la lecture
+  // de la disquette, puis coupe la lecture pour passer au rideau.
+  if (ecranCourant === 'inseree') { couperSons(); allerA('lecture'); bruitDisquette(); return; }
+  if (ecranCourant === 'lecture') { couperSons(); allerA('rideau'); pasRideau = 0; return; }
   if (['presents', 'titre', 'inseree', 'lecture', 'rideau'].includes(ecranCourant)) return;
   if (ecranCourant === 'bar') {
     const [x, y] = coord(e);
@@ -263,7 +305,7 @@ ecran.addEventListener('mousedown', (e) => {
     if (e.button === 2) menu.souris.droit = true;
     return;
   }
-  if (document.pointerLockElement !== ecran) { ecran.requestPointerLock(); return; }
+  if (document.pointerLockElement !== ecran) { capturer(); return; }
   bouton = true;
 });
 ecran.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -281,7 +323,9 @@ ecran.addEventListener('mousemove', (e) => {
 });
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== ecran) return;
-  dx += e.movementX; dy += e.movementY;
+  resteX += e.movementX * SENSIBILITE; resteY += e.movementY * SENSIBILITE;
+  const cx = Math.trunc(resteX), cy = Math.trunc(resteY);
+  dx += cx; dy += cy; resteX -= cx; resteY -= cy;
 });
 document.addEventListener('mouseup', (e) => {
   bouton = false;
@@ -473,6 +517,7 @@ function ecrireInfos() {
     ['sa vitesse', `${a.vx}, ${a.vy}`],
     ['tremblement', a.tremblement],
     ['ivresses', moteur.ivresses],
+    ['souris', `x${SENSIBILITE}, ${sourisBrute ? 'brute' : sourisBrute === false ? 'accélérée' : '?'}`],
   ].map(([k, v]) => `<div>${k} <b>${v}</b></div>`).join('');
 }
 
@@ -542,6 +587,7 @@ function imageEcran() {
     menu.dessiner(ctx, decorMenu);
     dx = 0; dy = 0;
   } else {
+    moteur.animEnCours = anim.av.length;           // $18440
     moteur.image(dx, dy, bouton);
     for (const e of moteur.evenements) {
       if (e.ecrire) anim.mem.ecrire(e.ecrire[0], e.ecrire[1]);
@@ -551,6 +597,12 @@ function imageEcran() {
     dx = 0; dy = 0;
     dessinerPartie();                // les scripts d'animation jouent des voix
     viderSons();
+    // $D39A : partie finie, hors tournoi. Quand la main du robot est au repos
+    // ($18438), qu'aucune animation ne joue ($18440) et que la vitre est
+    // retombee ($1B594 != 5), le menu s'ouvre de lui-meme ($1B57E = 6). Le
+    // refermer lance une nouvelle partie ($DB4C).
+    if (moteur.fin && robot.etat === 0 && anim.av.length === 0 &&
+        moteur.etatJeu !== ETAT_JEU.POINT && !menu.ouvert) ouvrirMenu();
     return (cadence.length ? cadence.shift() : 2) * VBL;
   }
   // RECONSTRUCTION : la cadence du bar n'est pas mesuree ; 25 images/s.

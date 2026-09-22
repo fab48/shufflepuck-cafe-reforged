@@ -38,9 +38,16 @@ releases it. **Space** opens the original menu:
 | `robot` | only against **Dc3**, the training robot: every one of its parameters |
 
 Right-click closes a menu. In a dialog, drag the sliders, then **SET-IT**
-to keep or **CANCEL** to undo. The banner has a full-screen button and a
-sound toggle (`?muet` in the address starts muted, `?debug` shows the engine
-state).
+to keep or **CANCEL** to undo. The banner has a full-screen button, a mouse
+sensitivity slider and a sound toggle (`?muet` in the address starts muted,
+`?debug` shows the engine state). On the welcome screen, a click skips the
+music, then the disk loading.
+
+Modern mice are far more sensitive than the ST's ball mouse, and the game's
+collision is swept: a paddle flicked at full speed covers half the table in
+one frame. The game therefore asks the browser for raw mouse movement (no OS
+acceleration, Chrome and Edge) and scales it by the slider, identically on
+both axes, as the original does. Everything after that is the 68000's.
 
 ## What was done
 
@@ -97,6 +104,12 @@ python tools/construire_html.py   # dist/shufflepuck.html
 
 The disk images and RAM dumps (`work/`) are not versioned: they come from
 your own original disks (see `METHODOLOGY.md`).
+
+## Thanks
+
+Thanks to Colin Leroy-Mira, whose earlier [port of Shufflepuck Café to the
+8-bit Apple II](https://www.colino.net/wordpress/archives/2026/02/23/the-challenges-of-porting-shufflepuck-cafe-to-the-8-bits-apple-ii/)
+was both inspiring and instructive.
 
 ## Rights
 

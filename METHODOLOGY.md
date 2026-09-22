@@ -107,7 +107,9 @@ Pages (`.github/workflows/pages.yml`).
 ## What is not original
 
 Listed in the code as `RECONSTRUCTION` or as a deliberate addition:
-the 2-second wait on the Brøderbund crowns (the original chains as soon as
+the mouse input scaling (raw browser movement times a user-set factor,
+the same on both axes as in `$15AB6` and `$FB7A`), clicks that skip the
+welcome music and disk loading, the 2-second wait on the Brøderbund crowns (the original chains as soon as
 the music is loaded), the frame rate of the menu and bar screens (25 fps,
 not measured), a blank score board when a new opponent is chosen (the
 original wipes it with the sponge), the tournament flag `$1B596` assumed

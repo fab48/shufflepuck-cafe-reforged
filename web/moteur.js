@@ -53,6 +53,7 @@ export class Moteur {
     this.m = m;
     this.graine = 12345;                 // $1AFB4
     this.sons = [];                      // sons declenches pendant l'image
+    this.animEnCours = 0;                // $18440, tenu a jour par la page
     // La table des neuf blocs, creee UNE fois : les blocs statiques vivent
     // toute la session. Quand Nerual copie la frappe du joueur, il modifie
     // SON bloc, durablement.
@@ -207,6 +208,9 @@ export class Moteur {
     const P = this.P;
     switch (this.etatJeu) {
       case ETAT_JEU.RETOUR_JOUEUR:                      // $10368
+        // Le palet attend que les animations du personnage soient finies
+        // ($18440, le nombre de scripts devant/derriere en cours).
+        if (this.animEnCours) break;
         P.x += borner(-15, -P.x, 15);
         P.y += borner(-60, 295 - P.y, 60);
         if (P.x === 0 && P.y === 295) {
@@ -215,6 +219,7 @@ export class Moteur {
         }
         break;
       case ETAT_JEU.RETOUR_ADV:                         // $103D6
+        if (this.animEnCours) break;
         P.x += borner(-15, -P.x, 15);
         P.y += borner(-60, 1205 - P.y, 60);
         if (P.x === 0 && P.y === 1205) {
@@ -600,11 +605,15 @@ export class Moteur {
     if (this.idx !== LEXAN) return;
     const r = this.A;
     const d = (v, num) => { const p = v * num; return p >= 0 ? div(p, 100) : -div(-p, 100); };
-    for (const c of ['reflex_x', 'reflex_y', 'accel_x', 'accel_y', 'reflex_x2', 'reflex_y2',
-                     'vr_droite', 'v_attente_x', 'v_attente_y', 'vr_pres',
-                     'pas_gauche', 'v_attaque', 'pas_arriere', 'pas_avant',
-                     'v_defense', 'pas_frappe_y']) r[c] = d(r[c], 82);
+    // L'ordre et les champs sont ceux de $110CC..$112B6.
+    for (const c of ['pas_gauche', 'v_attaque', 'pas_arriere', 'pas_avant',
+                     'vr_droite', 'v_attente_x', 'v_attente_y', 'vr_pres']) r[c] = d(r[c], 82);
     r.x_min = d(r.x_min, 107); r.x_max = d(r.x_max, 107);
+    for (const c of ['v_defense', 'pas_frappe_y',
+                     'reflex_x', 'reflex_y', 'accel_x', 'accel_y']) r[c] = d(r[c], 82);
+    // $1128C : les reflexes du coup appuye sont RECOPIES de ceux du coup
+    // normal, pas reduits a part.
+    r.reflex_x2 = r.reflex_x; r.reflex_y2 = r.reflex_y;
     r.erreur_visee = d(r.erreur_visee, 105);
     this.ivresses++;
   }
