@@ -40,7 +40,8 @@ releases it. **Space** opens the original menu:
 **F10** (or the *version* button in the banner) crossfades, at any time, to
 the **special edition**, in the manner of *Monkey Island Special Edition*:
 the same game, the same 68000 logic, with remastered graphics. For now,
-only the table is remastered; the rest keeps its original pixels. `?se` in
+the title screen and the table are remastered; the rest keeps its original
+pixels. `?se` in
 the address starts in the special edition.
 
 Right-click closes a menu. In a dialog, drag the sliders, then **SET-IT**

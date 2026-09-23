@@ -51,16 +51,19 @@
   .calque { position: absolute; left: 0; top: 0; height: 100%; pointer-events: none; }
   .partie { display: none; }
   #scene[data-partie="1"] .partie { display: block; }
-  #fondSE, #rebordsSE { image-rendering: auto; }
-  #fondOrig, #bandeOrig, #fondSE { z-index: 0; }
+  .titre { display: none; }
+  #scene[data-titre="1"] .titre { display: block; }
+  #fondSE, #rebordsSE, #titreSE { image-rendering: auto; }
+  #fondOrig, #bandeOrig, #fondSE, #titreOrig, #titreSE { z-index: 0; }
   #montantsOrig, #rebordsSE { z-index: 2; }
   #avant { z-index: 3; }
-  #fondSE, #rebordsSE, #montantsOrig { transition: opacity .6s ease-in-out; }
-  #fondSE, #rebordsSE { opacity: 0; }
-  #scene[data-se="1"] #fondSE, #scene[data-se="1"] #rebordsSE { opacity: 1; }
+  #fondSE, #rebordsSE, #titreSE, #montantsOrig { transition: opacity .6s ease-in-out; }
+  #fondSE, #rebordsSE, #titreSE { opacity: 0; }
+  #scene[data-se="1"] #fondSE, #scene[data-se="1"] #rebordsSE,
+  #scene[data-se="1"] #titreSE { opacity: 1; }
   #scene[data-se="1"] #montantsOrig { opacity: 0; }
   @media (prefers-reduced-motion: reduce) {
-    #fondSE, #rebordsSE, #montantsOrig { transition: none; }
+    #fondSE, #rebordsSE, #titreSE, #montantsOrig { transition: none; }
   }
   button {
     font: inherit; background: transparent; color: var(--texte);
@@ -94,6 +97,8 @@
     <canvas id="fondOrig" class="calque" width="320" height="200"></canvas>
     <canvas id="bandeOrig" class="calque partie" width="320" height="200"></canvas>
     <canvas id="fondSE" class="calque" width="1600" height="1000"></canvas>
+    <canvas id="titreOrig" class="calque titre" width="320" height="200"></canvas>
+    <canvas id="titreSE" class="calque titre" width="1600" height="1000"></canvas>
     <canvas id="ecran" width="320" height="200"></canvas>
     <canvas id="montantsOrig" class="calque partie" width="320" height="200"></canvas>
     <canvas id="rebordsSE" class="calque partie" width="1600" height="1000"></canvas>
@@ -137,6 +142,16 @@ const m = await (await fetch(A + 'manifeste.json')).json();
 // charge donc d'abord ; le reste arrive pendant qu'elles sont affichees.
 const imgPresents = await charger(A + m.ecrans.presents.fichier);
 const imgTitre = await charger(A + m.ecrans.titre.fichier);
+// L'ecran titre vit dans un calque, sous #ecran, comme la table (voir « les
+// calques du decor ») ; sa version remasterisee arrive quand elle peut.
+{
+  const g = document.getElementById('titreOrig').getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(imgTitre, 0, 0);
+  const c = document.getElementById('titreSE');
+  charger(A + 'se_titre.webp').then(
+    (i) => c.getContext('2d').drawImage(i, 0, 0, c.width, c.height), () => {});
+}
 ctx.drawImage(imgPresents, 0, 0);
 
 const palette = m.ecrans.terrain.palette;
@@ -404,11 +419,16 @@ document.getElementById('plein').onclick = () => {
 // du joueur), dans un second calque 320 x 200, #avant. Image pour image,
 // c'est l'ordre du peintre d'origine.
 //
+// De meme, l'ecran titre ($D138), qui reste affiche pendant tout le
+// chargement : #ecran n'y porte que la boite « inserez la disquette » et le
+// cadre noir du rideau.
+//
 // HORS ORIGINAL, sur le modele des editions speciales de Monkey Island : F10
 // ou le bouton du bandeau passe, en fondu enchaine, a des graphismes
 // remasterises. Le jeu ne change pas : il tourne toujours en 320 x 200.
-// Pour l'instant, la table : #fondSE couvre la table d'origine, et le haut
-// de ses rebords (#rebordsSE) remplace les montants, devant le personnage.
+// Pour l'instant, l'ecran titre (#titreSE) et la table : #fondSE couvre la
+// table d'origine, et le haut de ses rebords (#rebordsSE) remplace les
+// montants, devant le personnage.
 const scene = document.getElementById('scene');
 const fondSE = document.getElementById('fondSE');
 const rebordsSE = document.getElementById('rebordsSE');
@@ -482,6 +502,8 @@ document.addEventListener('keydown', (e) => {
 function calques() {
   scene.dataset.se = SE ? '1' : '0';
   scene.dataset.partie = (ecranCourant === 'partie' && menu && !menu.ouvert) ? '1' : '0';
+  scene.dataset.titre = ['titre', 'disquette', 'inseree', 'lecture', 'rideau']
+    .includes(ecranCourant) ? '1' : '0';
 }
 calques();
 
@@ -679,25 +701,25 @@ function imageEcran() {
       initAudio(); musique(); allerA('titre');
     }
   } else if (ecranCourant === 'titre') {
-    ctx.drawImage(imgTitre, 0, 0);
+    ctx.clearRect(0, 0, 320, 200);                 // le titre : dessous
     if (pret) allerA('disquette');
   } else if (ecranCourant === 'disquette') {
-    ctx.drawImage(imgTitre, 0, 0);
+    ctx.clearRect(0, 0, 320, 200);                 // le titre : dessous
     menu.cadre(ctx, 40, 100, 240, 20);
     menu.texte(ctx, m.menu.disquettes[1], 50, 108, 15);
   } else if (ecranCourant === 'inseree') {
     // Le message disparait ; la musique va au bout de sa sequence, puis le
     // lecteur lit la disquette.
-    ctx.drawImage(imgTitre, 0, 0);
+    ctx.clearRect(0, 0, 320, 200);                 // le titre : dessous
     if (!audio || audio.currentTime >= musiqueFin) { allerA('lecture'); bruitDisquette(); }
   } else if (ecranCourant === 'lecture') {
-    ctx.drawImage(imgTitre, 0, 0);
+    ctx.clearRect(0, 0, 320, 200);                 // le titre : dessous
     if (performance.now() - debutEcran >= DUREE_LECTURE) { allerA('rideau'); pasRideau = 0; }
   } else if (ecranCourant === 'rideau') {
     const i = pasRideau++, h = Math.max(0, i - 60);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 200);
     const l = 318 - 2 * i, t = 198 - 2 * h;
-    if (l > 0 && t > 0) ctx.drawImage(imgTitre, i + 1, h + 1, l, t, i + 1, h + 1, l, t);
+    if (l > 0 && t > 0) ctx.clearRect(i + 1, h + 1, l, t);   // le titre, dessous
     if (pasRideau >= 160) allerA('bar');
     return VBL;
   } else if (ecranCourant === 'bar') {
@@ -742,7 +764,7 @@ function boucle(maintenant) {
     dette -= periode;
     periode = imageEcran();
   }
-  if (pret) calques();
+  calques();
   ecrireInfos();
   requestAnimationFrame(boucle);
 }
