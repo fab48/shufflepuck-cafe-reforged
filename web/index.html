@@ -39,11 +39,21 @@
     width: 100vw; height: 100vh; border: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  #cadre:fullscreen canvas { width: min(100vw, 160vh); height: auto; }
+  #cadre:fullscreen #scene { width: min(100vw, 160vh); }
+  #scene { position: relative; width: 100%; overflow: hidden; }
   canvas {
     display: block; width: 100%; height: auto; image-rendering: pixelated;
-    cursor: pointer;
   }
+  #ecran { position: relative; z-index: 1; cursor: pointer; }
+  /* Version speciale : la table remasterisee sous l'ecran d'origine, le haut
+     des rebords par-dessus le personnage, puis les raquettes et le palet. */
+  .se { position: absolute; left: 0; top: 0; height: 100%; pointer-events: none; display: none; }
+  #fondSE { z-index: 0; image-rendering: auto; }
+  #rebordsSE { z-index: 2; image-rendering: auto; }
+  #avantSE { z-index: 3; }
+  #scene[data-se="1"] #fondSE,
+  #scene[data-se="1"][data-partie="1"] #rebordsSE,
+  #scene[data-se="1"][data-partie="1"] #avantSE { display: block; }
   button {
     font: inherit; background: transparent; color: var(--texte);
     border: 1px solid var(--trait); border-radius: 4px; padding: 3px 10px; cursor: pointer;
@@ -66,12 +76,18 @@
   <span class="reglages">
     <label>souris <input id="sensibilite" type="range" min="0.02" max="1" step="0.01">
       <output id="sensibiliteVal"></output></label>
+    <button id="se" aria-pressed="false" title="touche F10">version : originale</button>
     <button id="son" aria-pressed="false">son : oui</button>
   </span>
 </div>
 
 <div id="cadre" class="large">
-  <canvas id="ecran" width="320" height="200"></canvas>
+  <div id="scene">
+    <canvas id="fondSE" class="se" width="1600" height="1000"></canvas>
+    <canvas id="ecran" width="320" height="200"></canvas>
+    <canvas id="rebordsSE" class="se" width="1600" height="1000"></canvas>
+    <canvas id="avantSE" class="se" width="320" height="200"></canvas>
+  </div>
 </div>
 
 <div id="infos" class="large" hidden></div>
@@ -79,7 +95,8 @@
 <p class="note large">
   Les images, les sons, la physique, l'intelligence des adversaires et leurs
   animations viennent du jeu d'origine, lus octet par octet sur les disquettes
-  et dans le code 68000. Ajoutez <code>?debug</code> à l'adresse pour voir
+  et dans le code 68000. La version spéciale (bouton ou touche F10)
+  remplace les graphismes par des versions remasterisées. Ajoutez <code>?debug</code> à l'adresse pour voir
   l'état du moteur.
 </p>
 
@@ -91,8 +108,11 @@ import { Bar } from './bar.js';
 import { Menu } from './menu.js';
 
 const ecran = document.getElementById('ecran');
-const ctx = ecran.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+const ctxBas = ecran.getContext('2d');
+ctxBas.imageSmoothingEnabled = false;
+// Le contexte de dessin courant : toujours l'ecran d'origine, sauf dans la
+// version speciale, ou la fin de l'image de jeu passe au calque de devant.
+let ctx = ctxBas;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
 const charger = (src) => new Promise((ok, ko) => {
@@ -363,6 +383,81 @@ document.getElementById('plein').onclick = () => {
   else cadre.requestFullscreen().catch(() => {});
 };
 
+// --- version speciale --------------------------------------------------------
+// HORS ORIGINAL, sur le modele des editions speciales de Monkey Island : F10
+// ou le bouton du bandeau bascule a tout moment entre les graphismes
+// d'origine et des graphismes remasterises. Le jeu, lui, ne change pas : il
+// tourne toujours en 320 x 200 dans #ecran ; seules les images changent.
+//
+// Pour l'instant, la table. Elle se glisse SOUS l'ecran d'origine, rendu
+// transparent la ou etait le decor. Deux choses passaient devant le
+// personnage dans l'original : les deux montants du fond de table (sprites
+// 15 et 16) ; ils sont remplaces par le haut de la table remasterisee, pose
+// PAR-DESSUS l'ecran (#rebordsSE). Tout ce que $DF00 dessine apres eux
+// (raquettes, palet, animations « devant », vitre du joueur) passe alors
+// dans un second calque 320 x 200, au-dessus (#avantSE).
+const scene = document.getElementById('scene');
+const fondSE = document.getElementById('fondSE');
+const rebordsSE = document.getElementById('rebordsSE');
+const avantSE = document.getElementById('avantSE');
+const ctxAvant = avantSE.getContext('2d');
+ctxAvant.imageSmoothingEnabled = false;
+let SE = new URLSearchParams(location.search).has('se');
+try { if (localStorage.getItem('shufflepuck.se') === '1') SE = true; } catch (e) {}
+let tableSE = null;                    // l'image remasterisee, une fois chargee
+const seActif = () => SE && tableSE !== null;
+
+// La table remasterisee ne tombe pas exactement sur celle du ST : les
+// abscisses concordent a un pixel pres, mais les lignes rouges montrent un
+// leger tassement vertical. Releve sur les lignes transversales (y = 79,
+// 102, 161, 178 de fond_terrain.png) : y_ST = 1,0133 y_SE - 0,55, en
+// pixels ST.
+const CALAGE_SE = { y: -0.55, h: 200 * 1.0133 };
+// Le haut des rebords : tout ce qui depasse au-dessus de la table, jusqu'a la
+// ligne 68 ou $F860 coupe le personnage. Le noir y devient transparent.
+const BAS_REBORDS = 68;
+function preparerSE(img) {
+  const k = fondSE.width / 320;
+  const g = fondSE.getContext('2d');
+  g.drawImage(img, 0, CALAGE_SE.y * k, 320 * k, CALAGE_SE.h * k);
+  const r = rebordsSE.getContext('2d');
+  const h = BAS_REBORDS * k;
+  const d = g.getImageData(0, 0, fondSE.width, h);
+  const p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const v = Math.max(p[i], p[i + 1], p[i + 2]);
+    p[i + 3] = Math.min(255, v * 8);
+  }
+  r.putImageData(d, 0, 0);
+  tableSE = img;
+}
+
+const seBtn = document.getElementById('se');
+function afficherSE() {
+  seBtn.textContent = SE ? 'version : spéciale' : 'version : originale';
+  seBtn.setAttribute('aria-pressed', String(SE));
+}
+afficherSE();
+function basculerSE() {
+  SE = !SE;
+  try { localStorage.setItem('shufflepuck.se', SE ? '1' : '0'); } catch (e) {}
+  afficherSE();
+  calquesSE();
+}
+seBtn.onclick = basculerSE;
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'F10') return;
+  e.preventDefault();
+  if (!e.repeat) basculerSE();
+});
+// Quels calques remasterises sont visibles : la table des qu'elle est
+// chargee (les autres ecrans la recouvrent entierement), les calques de
+// devant seulement pendant l'echange.
+function calquesSE() {
+  scene.dataset.se = seActif() ? '1' : '0';
+  scene.dataset.partie = (ecranCourant === 'partie' && menu && !menu.ouvert) ? '1' : '0';
+}
+
 // --- rendu de la partie -----------------------------------------------------
 // --- primitives du ST : trait horizontal $17252, trait $16EBE, pave $17E78 ---
 function hligne(x1, y, x2, c) {
@@ -458,10 +553,18 @@ function spritePerso(k) {
 
 // Une image de jeu complete, dans l'ordre de $00D5B0 puis $00F860.
 function dessinerPartie() {
+  const se = seActif();
+  ctx = ctxBas;
   ctx.save();
-  // $00D5B0 : le decor de la partie.
-  ctx.drawImage(fond, 0, 0);
-  pave(0, 0, 319, 67, 0);                                  // bande noire du fond
+  // $00D5B0 : le decor de la partie. Version speciale : rien, la table est
+  // dessous, et son fond est deja noir.
+  if (se) {
+    ctx.clearRect(0, 0, 320, 200);
+    ctxAvant.clearRect(0, 0, 320, 200);
+  } else {
+    ctx.drawImage(fond, 0, 0);
+    pave(0, 0, 319, 67, 0);                                // bande noire du fond
+  }
   const j = advJson[moteur.idx];
   const [x0] = anim.placer(0);
   sprite(advImg[moteur.idx], j, 0, x0, 67);                // le corps, pied a 67
@@ -478,8 +581,12 @@ function dessinerPartie() {
     decoupe(67); traceVitre(moteur.vitre); decoupe(68);
   }
   decoupe(200);
-  sprite(interfaceImg, interfaceJson, 15, 90, 67);         // les deux montants
-  sprite(interfaceImg, interfaceJson, 16, 204, 67);        // du fond de table
+  if (se) {                                                // #rebordsSE, puis
+    ctx.restore(); ctx = ctxAvant; ctx.save();             // le calque de devant
+  } else {
+    sprite(interfaceImg, interfaceJson, 15, 90, 67);       // les deux montants
+    sprite(interfaceImg, interfaceJson, 16, 204, 67);      // du fond de table
+  }
 
   // $00DF00 : l'ordre du peintre. Le palet est dessine juste avant la
   // premiere raquette qui se trouve devant lui.
@@ -498,6 +605,7 @@ function dessinerPartie() {
   anim.av = anim.av.filter((s) => !s.devant || anim.jouer(s, spritePerso));
   if (moteur.vitre && moteur.vitre.pres) traceVitre(moteur.vitre);
   ctx.restore();
+  ctx = ctxBas;
 }
 
 const infos = document.getElementById('infos');
@@ -618,6 +726,7 @@ function boucle(maintenant) {
     dette -= periode;
     periode = imageEcran();
   }
+  if (pret) calquesSE();
   ecrireInfos();
   requestAnimationFrame(boucle);
 }
@@ -651,13 +760,19 @@ bar = new Bar(m, moteur, imgBar, barImg, barJson, palette);
 menu = new Menu(m, moteur, interfaceImg, interfaceJson, palette);
 // $EC94 : sous le menu, le decor seul (la table, le tableau et ses batons).
 decorMenu = {
-  dessiner: (g) => { g.drawImage(fond, 0, 0); g.drawImage(robot.decor, 0, 0); },
+  dessiner: (g) => {
+    if (seActif()) g.clearRect(0, 0, 320, 200);            // la table SE dessous
+    else g.drawImage(fond, 0, 0);
+    g.drawImage(robot.decor, 0, 0);
+  },
   scores: imgScores,
 };
 window.jeu = { moteur, anim, robot, bar, menu, partie, allerA };
 charges++;
 pret = true;
 progression();
+// La table remasterisee, en dernier : le jeu d'origine n'en a pas besoin.
+charger(A + 'se_terrain.webp').then(preparerSE, () => {});
 </script>
 </body>
 </html>

@@ -24,7 +24,8 @@ RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(RACINE, 'web')
 SORTIE = os.path.join(RACINE, 'dist', 'shufflepuck.html')
 
-TYPES = {'.png': 'image/png', '.json': 'application/json', '.wav': 'audio/wav'}
+TYPES = {'.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json',
+         '.wav': 'audio/wav'}
 IMPORT = re.compile(r"^import \{([^}]*)\} from '\./([\w.]+)';\s*$", re.M)
 
 

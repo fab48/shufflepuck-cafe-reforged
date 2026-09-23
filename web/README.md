@@ -12,6 +12,7 @@ Plain HTML and JavaScript modules, no build step, no dependency.
 | `menu.js` | the Space-bar menu, its dialogs and sliders (`$1299E`, `$1348C`) |
 | `fonte.js` | the game font `quete.fnt` (`$14FA4`) |
 | `assets/` | produced by `tools/exporter_web.py`; `manifeste.json` holds every table read from memory |
+| `assets/se_*` | **not** from the disks: the special edition's remastered graphics (F10) |
 
 Run it with `python -m http.server 8731 --directory web` from the project
 root. `?debug` shows the engine state, `?muet` starts muted.
