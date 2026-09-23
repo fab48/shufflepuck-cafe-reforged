@@ -37,7 +37,7 @@ releases it. **Space** opens the original menu:
 | `obstacle` | none, small, medium, large, or your own sliding block |
 | `robot` | only against **Dc3**, the training robot: every one of its parameters |
 
-**F10** (or the *version* button in the banner) switches, at any time, to
+**F10** (or the *version* button in the banner) crossfades, at any time, to
 the **special edition**, in the manner of *Monkey Island Special Edition*:
 the same game, the same 68000 logic, with remastered graphics. For now,
 only the table is remastered; the rest keeps its original pixels. `?se` in

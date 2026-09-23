@@ -45,15 +45,23 @@
     display: block; width: 100%; height: auto; image-rendering: pixelated;
   }
   #ecran { position: relative; z-index: 1; cursor: pointer; }
-  /* Version speciale : la table remasterisee sous l'ecran d'origine, le haut
-     des rebords par-dessus le personnage, puis les raquettes et le palet. */
-  .se { position: absolute; left: 0; top: 0; height: 100%; pointer-events: none; display: none; }
-  #fondSE { z-index: 0; image-rendering: auto; }
-  #rebordsSE { z-index: 2; image-rendering: auto; }
-  #avantSE { z-index: 3; }
-  #scene[data-se="1"] #fondSE,
-  #scene[data-se="1"][data-partie="1"] #rebordsSE,
-  #scene[data-se="1"][data-partie="1"] #avantSE { display: block; }
+  /* Les calques du decor, sous et sur #ecran (voir « les calques du decor »).
+     Ceux de la partie seulement pendant l'echange ; ceux de la version
+     speciale en fondu enchaine. */
+  .calque { position: absolute; left: 0; top: 0; height: 100%; pointer-events: none; }
+  .partie { display: none; }
+  #scene[data-partie="1"] .partie { display: block; }
+  #fondSE, #rebordsSE { image-rendering: auto; }
+  #fondOrig, #bandeOrig, #fondSE { z-index: 0; }
+  #montantsOrig, #rebordsSE { z-index: 2; }
+  #avant { z-index: 3; }
+  #fondSE, #rebordsSE, #montantsOrig { transition: opacity .6s ease-in-out; }
+  #fondSE, #rebordsSE { opacity: 0; }
+  #scene[data-se="1"] #fondSE, #scene[data-se="1"] #rebordsSE { opacity: 1; }
+  #scene[data-se="1"] #montantsOrig { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    #fondSE, #rebordsSE, #montantsOrig { transition: none; }
+  }
   button {
     font: inherit; background: transparent; color: var(--texte);
     border: 1px solid var(--trait); border-radius: 4px; padding: 3px 10px; cursor: pointer;
@@ -83,10 +91,13 @@
 
 <div id="cadre" class="large">
   <div id="scene">
-    <canvas id="fondSE" class="se" width="1600" height="1000"></canvas>
+    <canvas id="fondOrig" class="calque" width="320" height="200"></canvas>
+    <canvas id="bandeOrig" class="calque partie" width="320" height="200"></canvas>
+    <canvas id="fondSE" class="calque" width="1600" height="1000"></canvas>
     <canvas id="ecran" width="320" height="200"></canvas>
-    <canvas id="rebordsSE" class="se" width="1600" height="1000"></canvas>
-    <canvas id="avantSE" class="se" width="320" height="200"></canvas>
+    <canvas id="montantsOrig" class="calque partie" width="320" height="200"></canvas>
+    <canvas id="rebordsSE" class="calque partie" width="1600" height="1000"></canvas>
+    <canvas id="avant" class="calque partie" width="320" height="200"></canvas>
   </div>
 </div>
 
@@ -1700,8 +1711,8 @@ const { Menu } = __module_menu_js;
 const ecran = document.getElementById('ecran');
 const ctxBas = ecran.getContext('2d');
 ctxBas.imageSmoothingEnabled = false;
-// Le contexte de dessin courant : toujours l'ecran d'origine, sauf dans la
-// version speciale, ou la fin de l'image de jeu passe au calque de devant.
+// Le contexte de dessin courant : l'ecran, sauf pour la fin de l'image de
+// jeu, qui passe au calque de devant (voir « les calques du decor »).
 let ctx = ctxBas;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
@@ -1973,29 +1984,45 @@ document.getElementById('plein').onclick = () => {
   else cadre.requestFullscreen().catch(() => {});
 };
 
-// --- version speciale --------------------------------------------------------
-// HORS ORIGINAL, sur le modele des editions speciales de Monkey Island : F10
-// ou le bouton du bandeau bascule a tout moment entre les graphismes
-// d'origine et des graphismes remasterises. Le jeu, lui, ne change pas : il
-// tourne toujours en 320 x 200 dans #ecran ; seules les images changent.
+// --- les calques du decor, et la version speciale ------------------------------
+// Le decor de la partie ne change jamais : il vit dans des calques fixes,
+// sous et sur #ecran, qui ne porte plus que ce qui bouge. Sous #ecran, la
+// table ($D5B0) et la bande noire du fond ; puis #ecran, ou le personnage
+// est coupe a la ligne 68 ($F860) ; puis les deux montants du fond de table
+// (sprites 15 et 16), qui passent DEVANT le personnage ; enfin, tout ce que
+// $DF00 dessine apres eux (raquettes, palet, animations « devant », vitre
+// du joueur), dans un second calque 320 x 200, #avant. Image pour image,
+// c'est l'ordre du peintre d'origine.
 //
-// Pour l'instant, la table. Elle se glisse SOUS l'ecran d'origine, rendu
-// transparent la ou etait le decor. Deux choses passaient devant le
-// personnage dans l'original : les deux montants du fond de table (sprites
-// 15 et 16) ; ils sont remplaces par le haut de la table remasterisee, pose
-// PAR-DESSUS l'ecran (#rebordsSE). Tout ce que $DF00 dessine apres eux
-// (raquettes, palet, animations « devant », vitre du joueur) passe alors
-// dans un second calque 320 x 200, au-dessus (#avantSE).
+// HORS ORIGINAL, sur le modele des editions speciales de Monkey Island : F10
+// ou le bouton du bandeau passe, en fondu enchaine, a des graphismes
+// remasterises. Le jeu ne change pas : il tourne toujours en 320 x 200.
+// Pour l'instant, la table : #fondSE couvre la table d'origine, et le haut
+// de ses rebords (#rebordsSE) remplace les montants, devant le personnage.
 const scene = document.getElementById('scene');
 const fondSE = document.getElementById('fondSE');
 const rebordsSE = document.getElementById('rebordsSE');
-const avantSE = document.getElementById('avantSE');
-const ctxAvant = avantSE.getContext('2d');
+const ctxAvant = document.getElementById('avant').getContext('2d');
 ctxAvant.imageSmoothingEnabled = false;
 let SE = new URLSearchParams(location.search).has('se');
 try { if (localStorage.getItem('shufflepuck.se') === '1') SE = true; } catch (e) {}
-let tableSE = null;                    // l'image remasterisee, une fois chargee
-const seActif = () => SE && tableSE !== null;
+
+// Les calques d'origine, poses une fois le decor charge.
+function preparerDecor() {
+  const g = (id) => {
+    const c = document.getElementById(id).getContext('2d');
+    c.imageSmoothingEnabled = false;
+    return c;
+  };
+  g('fondOrig').drawImage(fond, 0, 0);
+  const b = g('bandeOrig');
+  b.fillStyle = palette[0]; b.fillRect(0, 0, 320, 68);     // $D5B0, (0,0)-(319,67)
+  const mo = g('montantsOrig');
+  for (const [k, x] of [[15, 90], [16, 204]]) {
+    const s = interfaceJson.sprites[k];
+    mo.drawImage(interfaceImg, s.x, s.y, s.w, s.h, x, 67 - s.h + 1, s.w, s.h);
+  }
+}
 
 // La table remasterisee ne tombe pas exactement sur celle du ST : les
 // abscisses concordent a un pixel pres, mais les lignes rouges montrent un
@@ -2019,7 +2046,6 @@ function preparerSE(img) {
     p[i + 3] = Math.min(255, v * 8);
   }
   r.putImageData(d, 0, 0);
-  tableSE = img;
 }
 
 const seBtn = document.getElementById('se');
@@ -2032,7 +2058,7 @@ function basculerSE() {
   SE = !SE;
   try { localStorage.setItem('shufflepuck.se', SE ? '1' : '0'); } catch (e) {}
   afficherSE();
-  calquesSE();
+  calques();
 }
 seBtn.onclick = basculerSE;
 document.addEventListener('keydown', (e) => {
@@ -2040,13 +2066,14 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   if (!e.repeat) basculerSE();
 });
-// Quels calques remasterises sont visibles : la table des qu'elle est
-// chargee (les autres ecrans la recouvrent entierement), les calques de
-// devant seulement pendant l'echange.
-function calquesSE() {
-  scene.dataset.se = seActif() ? '1' : '0';
+// Les calques de la partie ne se montrent que pendant l'echange : les
+// autres ecrans (et le menu, sur le decor seul, $EC94) recouvrent #ecran
+// entierement ou n'ont besoin que de la table.
+function calques() {
+  scene.dataset.se = SE ? '1' : '0';
   scene.dataset.partie = (ecranCourant === 'partie' && menu && !menu.ouvert) ? '1' : '0';
 }
+calques();
 
 // --- rendu de la partie -----------------------------------------------------
 // --- primitives du ST : trait horizontal $17252, trait $16EBE, pave $17E78 ---
@@ -2143,18 +2170,11 @@ function spritePerso(k) {
 
 // Une image de jeu complete, dans l'ordre de $00D5B0 puis $00F860.
 function dessinerPartie() {
-  const se = seActif();
   ctx = ctxBas;
   ctx.save();
-  // $00D5B0 : le decor de la partie. Version speciale : rien, la table est
-  // dessous, et son fond est deja noir.
-  if (se) {
-    ctx.clearRect(0, 0, 320, 200);
-    ctxAvant.clearRect(0, 0, 320, 200);
-  } else {
-    ctx.drawImage(fond, 0, 0);
-    pave(0, 0, 319, 67, 0);                                // bande noire du fond
-  }
+  // $00D5B0 : le decor de la partie est dans les calques de dessous.
+  ctx.clearRect(0, 0, 320, 200);
+  ctxAvant.clearRect(0, 0, 320, 200);
   const j = advJson[moteur.idx];
   const [x0] = anim.placer(0);
   sprite(advImg[moteur.idx], j, 0, x0, 67);                // le corps, pied a 67
@@ -2170,13 +2190,9 @@ function dessinerPartie() {
   if (moteur.vitre && !moteur.vitre.pres) {                // vitre du fond : derriere
     decoupe(67); traceVitre(moteur.vitre); decoupe(68);
   }
-  decoupe(200);
-  if (se) {                                                // #rebordsSE, puis
-    ctx.restore(); ctx = ctxAvant; ctx.save();             // le calque de devant
-  } else {
-    sprite(interfaceImg, interfaceJson, 15, 90, 67);       // les deux montants
-    sprite(interfaceImg, interfaceJson, 16, 204, 67);      // du fond de table
-  }
+  // Les deux montants du fond de table sont dans leur calque ; la suite
+  // passe devant eux.
+  ctx.restore(); ctx = ctxAvant; ctx.save();
 
   // $00DF00 : l'ordre du peintre. Le palet est dessine juste avant la
   // premiere raquette qui se trouve devant lui.
@@ -2316,7 +2332,7 @@ function boucle(maintenant) {
     dette -= periode;
     periode = imageEcran();
   }
-  if (pret) calquesSE();
+  if (pret) calques();
   ecrireInfos();
   requestAnimationFrame(boucle);
 }
@@ -2351,12 +2367,12 @@ menu = new Menu(m, moteur, interfaceImg, interfaceJson, palette);
 // $EC94 : sous le menu, le decor seul (la table, le tableau et ses batons).
 decorMenu = {
   dessiner: (g) => {
-    if (seActif()) g.clearRect(0, 0, 320, 200);            // la table SE dessous
-    else g.drawImage(fond, 0, 0);
+    g.clearRect(0, 0, 320, 200);                           // la table : dessous
     g.drawImage(robot.decor, 0, 0);
   },
   scores: imgScores,
 };
+preparerDecor();
 window.jeu = { moteur, anim, robot, bar, menu, partie, allerA };
 charges++;
 pret = true;
